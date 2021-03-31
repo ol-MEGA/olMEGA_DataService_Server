@@ -31,8 +31,18 @@ class olMEGA_DataService_Server(object):
         self.dataTables = {}
         database = databaseConnector()
         if database.db == "mySQL":
+            print ("  ****************************************************************************************")
+            print ("  *                                                                                      *")
+            print ("  * INFO: you are using a mySQL-Database!                                                *")
+            print ("  *                                                                                      *")
+            print ("  ****************************************************************************************")
             tables = database.execute_query("SHOW TABLES LIKE 'EMA_%';")
         elif database.db == "sqlite3":
+            print ("  ****************************************************************************************")
+            print ("  *                                                                                      *")
+            print ("  * INFO: you are using a SQLITE3-Database!                                              *")
+            print ("  *                                                                                      *")
+            print ("  ****************************************************************************************")
             tables = database.execute_query("SELECT name FROM sqlite_master WHERE type='table' and name like 'EMA_%';")
         for table in tables:
             if database.db == "mySQL":

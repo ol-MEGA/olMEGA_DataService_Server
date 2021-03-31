@@ -21,7 +21,7 @@ def dict_factory(cursor, row):
     return d
 
 class databaseConnector(object):
-    def __init__(self, dbType = "mySQL", timeout = 60 * 5):
+    def __init__(self, dbType = "sqlite3", timeout = 60 * 5):
         self.db = dbType
         #self.db = "sqlite3"
         if self.db == "mySQL":
@@ -72,7 +72,7 @@ class databaseConnector(object):
             return data
     
     def close(self):
-        if self.connection.is_connected():
+        if (self.db == "mySQL" and self.connection.is_connected()) or self.db == "sqlite3":
             self.connection.commit()
             self.connection.close()
         pass
