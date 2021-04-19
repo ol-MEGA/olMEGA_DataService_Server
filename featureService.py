@@ -54,7 +54,6 @@ class FeatureService():
                 query = 'delete from EMA_feature where ID = "%s"' % feature[0]["id"]
                 self.db.execute_query(query)
                 self.db.connection.commit()
-            
 
     def run(self):
         query = "SELECT * FROM EMA_Feature"
@@ -79,10 +78,15 @@ class FeatureService():
                         data.append(lastItem.copy())
                         for item in data:
                             if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
-                                query = 'SELECT EMA_feature.name as name, EMA_featurevalue.Start as start, EMA_featurevalue.End as end, EMA_featurevalue.Side as Side, EMA_featurevalue.Value as value, EMA_featurevalue.isValid as isValid FROM EMA_featurevalue \
-                                    join EMA_feature on EMA_featurevalue.Feature_id = EMA_feature.ID \
-                                    WHERE EMA_featurevalue.DataChunk_id = "%s"' % lastItem["datachunkid"]
-                                previousFeatures = self.db.execute_query(query)
+                                previousFeatures = {}
+                                for feature in Features:
+                                    query = 'SELECT EMA_featurevalue.Start as start, EMA_featurevalue.End as end, EMA_featurevalue.Side as Side, EMA_featurevalue.Value as value, EMA_featurevalue.isValid as isValid FROM EMA_featurevalue \
+                                        join EMA_feature on EMA_featurevalue.Feature_id = EMA_feature.ID \
+                                        WHERE EMA_feature.name = "%s" AND EMA_featurevalue.DataChunk_id = "%s" \
+                                        ORDER by EMA_featurevalue.Start' % (feature['name'].lower(), lastItem["datachunkid"])
+                                    temp = self.db.execute_query(query)
+                                    if len(temp):
+                                        previousFeatures[feature['name'].lower()] = temp
                                 values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), self.loadFeatureFileData(files), previousFeatures)
                                 for value in values:
                                     queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
