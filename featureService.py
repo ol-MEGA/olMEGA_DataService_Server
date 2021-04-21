@@ -1,10 +1,14 @@
 import os
 import glob
 import uuid
-import inspect
-from olMEGA_DataService_Server.dataConnectors import databaseConnector
 import main
+import numpy
+import inspect
 import datetime
+import matplotlib.pyplot as plt
+from olMEGA_DataService_Server.dataConnectors import databaseConnector
+from numpy import float32
+import struct
 
 class FeatureService():
 
@@ -35,11 +39,31 @@ class FeatureService():
         
     def loadFeatureFileData(self, filenames):
         featureFileData = {}
+        fs = None
         for file in filenames:
             fileNameParts = os.path.basename(file).split("_")
             if len(fileNameParts) > 1:
                 with open(file, mode='rb') as filereader:
-                    featureFileData[fileNameParts[0]] = filereader.read()
+                    data = filereader.read()
+                vFrames = int.from_bytes(data[0:4], byteorder='big', signed=True)
+                nDim = int.from_bytes(data[4:8], byteorder='big', signed=True)
+                FrameSizeInSamples = int.from_bytes(data[8:12], byteorder='big', signed=True)
+                HopSizeInSamples = int.from_bytes(data[12:16], byteorder='big', signed=True)
+                fs = int.from_bytes(data[16:20], byteorder='big', signed=True)
+                nBytesHeader = 36
+                if len(fileNameParts) < 4:
+                    nBytesHeader = 29
+                data = numpy.frombuffer(data, dtype='>f4', offset = nBytesHeader, count=-1).reshape([vFrames, nDim])[ :: , 2 :: ]
+                if fileNameParts[0].lower() == "psd":
+                    n = [int(data.shape[1] / 2), int(data.shape[1] / 4)]
+                    temp = data[:, 0 : n[0]]
+                    featureFileData["Pxy"] = temp[:, 1 : -1 : 2] + temp[:, 2 : -1 : 2] * 1j
+                    featureFileData["Pxx"] = data[:, n[0] + 1 : n[0] + n[1]]
+                    featureFileData["Pyy"] = data[:, n[0] + n[1] + 1 : ]                    
+                else:
+                    featureFileData[fileNameParts[0]] = data
+        if fs != None:       
+            featureFileData["fs"] = fs
         return featureFileData
     
     def removeFeature(self, featureName):
