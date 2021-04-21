@@ -7,8 +7,6 @@ import inspect
 import datetime
 import matplotlib.pyplot as plt
 from olMEGA_DataService_Server.dataConnectors import databaseConnector
-from numpy import float32
-import struct
 
 class FeatureService():
 
