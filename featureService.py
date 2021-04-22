@@ -126,5 +126,5 @@ class FeatureService():
 
 if __name__ == "__main__":
     featureService = FeatureService()
-    featureService.removeFeature("testFeature1")
-    featureService.run()
+    featureService.removeFeature("testFeature")
+    #featureService.run()

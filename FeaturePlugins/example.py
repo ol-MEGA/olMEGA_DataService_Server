@@ -2,7 +2,7 @@ import datetime
 
 class Example:
     
-    feature = 'testFeature2'
+    feature = 'testFeature'
     description = 'Demo Feature for testing...'
     isActive = True
     
