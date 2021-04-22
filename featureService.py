@@ -1,11 +1,9 @@
 import os
-import glob
 import uuid
 import main
 import numpy
 import inspect
 import datetime
-import matplotlib.pyplot as plt
 from olMEGA_DataService_Server.dataConnectors import databaseConnector
 
 class FeatureService():
@@ -126,5 +124,5 @@ class FeatureService():
 
 if __name__ == "__main__":
     featureService = FeatureService()
-    featureService.removeFeature("testFeature")
-    #featureService.run()
+    #featureService.removeFeature("testFeature")
+    featureService.run()
