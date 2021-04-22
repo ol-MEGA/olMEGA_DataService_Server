@@ -68,7 +68,7 @@ class FeatureService():
         if main.develServer:
             query = 'SELECT ID from EMA_Feature WHERE name like "%s"' % featureName
             feature = self.db.execute_query(query)
-            if len(feature) >= 0:
+            if len(feature) > 0:
                 query = 'delete from EMA_authorization where Feature_ID = "%s"' % feature[0]["id"]
                 self.db.execute_query(query)
                 query = 'delete from EMA_featurevalue where Feature_ID = "%s"' % feature[0]["id"]
@@ -80,6 +80,7 @@ class FeatureService():
     def run(self):
         query = "SELECT * FROM EMA_Feature"
         Features = self.db.execute_query(query)
+        limit = 200
         for plugin in self.plugins:
             if len([element for element in Features if element['name'] == plugin.feature.lower()]):
                 currentFeatureId = [element for element in Features if element['name'] == plugin.feature.lower()][0]["id"]
@@ -92,7 +93,7 @@ class FeatureService():
                             (SELECT count(EMA_featurevalue.ID) FROM EMA_featurevalue \
                             JOIN EMA_feature ON EMA_featurevalue.Feature_id = EMA_feature.ID \
                             WHERE EMA_featurevalue.DataChunk_id = EMA_datachunk.ID AND EMA_feature.Name = "%s") = 0 \
-                        order by EMA_datachunk.subject, EMA_datachunk.start, EMA_datachunk.ID LIMIT 100' % plugin.feature.lower()
+                        order by EMA_datachunk.subject, EMA_datachunk.start, EMA_datachunk.ID LIMIT %d' % (plugin.feature.lower(), limit)
                     data = self.db.execute_query(query)
                     if len(data):
                         files = []
@@ -109,7 +110,7 @@ class FeatureService():
                                     temp = self.db.execute_query(query)
                                     if len(temp):
                                         previousFeatures[feature['name'].lower()] = temp
-                                values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), self.loadFeatureFileData(files), previousFeatures)
+                                values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **self.loadFeatureFileData(files)})
                                 for value in values:
                                     queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                                 files = []
@@ -125,5 +126,5 @@ class FeatureService():
 
 if __name__ == "__main__":
     featureService = FeatureService()
-    #featureService.removeFeature("testFeature")
+    featureService.removeFeature("testFeature1")
     featureService.run()

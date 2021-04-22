@@ -2,7 +2,7 @@ import datetime
 
 class Example:
     
-    feature = 'testFeature'
+    feature = 'testFeature2'
     description = 'Demo Feature for testing...'
     isActive = True
     
@@ -10,7 +10,7 @@ class Example:
         self.timedelta = 2 # in seconds (max: 60)
         pass
     
-    def process(self, startTime, endTime, featureFileData, previousFeatures):
+    def process(self, startTime, endTime, existingFeatures):
         values = []
         sliceStart = startTime
         while sliceStart < endTime:
