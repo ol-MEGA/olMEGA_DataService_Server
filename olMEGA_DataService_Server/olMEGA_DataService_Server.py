@@ -111,6 +111,7 @@ class olMEGA_DataService_Server(object):
         self.add_endpoint("/importQuestionaere", "/importQuestionaere", self.importQuestionaere, ['POST', 'PUT'])
         self.add_endpoint("/createNewFeatureValue", "/createNewFeatureValue", self.createNewFeatureValue, ['POST'])
         self.add_endpoint("/saveFeatureValue", "/saveFeatureValue", self.saveFeatureValue, ['POST'])
+        self.add_endpoint("/executeQuery", "/executeQuery", self.executeQuery, ['POST'])
         #self.add_endpoint("/deleteFeatureValues", "/deleteFeatureValues", self.deleteFeatureValues, ['POST'])
         self.add_endpoint("/close", "/close", self.close, methods=['POST'])
         #if self.app.debug:
@@ -363,7 +364,17 @@ class olMEGA_DataService_Server(object):
             if self.app.debug:
                 traceback.print_exc()
             return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
-    
+        
+    @auth.login_required
+    def executeQuery(self):
+        if request.is_json:
+            inputData = request.get_json()
+            if "COMMAND" in inputData:
+                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
+                returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"]))
+                myDataConnector.close()                
+                return str(returnData)
+            return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
     """            
     @auth.login_required
     def getDataSQL(self):
