@@ -51,9 +51,13 @@ class databaseConnector(object):
             return "../db.sqlite3"
         else:
             return ""
+        
+    def resetTimer(self):
+        self.startTime = time.time()
 
     def execute_query(self, query):
         if time.time() - self.startTime > self.timeout:
+            print(query)
             raise TimeoutError
         if not query.endswith(";"):
             query += ";"
