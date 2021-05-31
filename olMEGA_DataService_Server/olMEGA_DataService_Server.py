@@ -275,7 +275,7 @@ class olMEGA_DataService_Server(object):
                     if "downloadFileList" in session.keys() and len(session["downloadFileList"]) > 0:
                         count = 0
                         datasize = 0
-                        tempFile = tempfile.NamedTemporaryFile(mode='w')
+                        tempFile = tempfile.NamedTemporaryFile(mode='w', delete=False)
                         zipf = zipfile.ZipFile(tempFile.name, 'w', zipfile.ZIP_DEFLATED)
                         for idx in reversed(range(len(session["downloadFileList"]))):
                             datasize += os.path.getsize(session["downloadFileList"][idx])
