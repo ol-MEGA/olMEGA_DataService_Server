@@ -14,4 +14,4 @@ class Example:
         pass
     
     def process(self, featureName, featureData, existingFeatures):
-        return state.invalid
+        return state.undefined
