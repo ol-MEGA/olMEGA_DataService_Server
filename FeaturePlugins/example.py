@@ -6,11 +6,15 @@ class Example:
     feature = 'testFeature'
     description = 'Demo Feature for testing...'
     isActive = True
-    storeAsFeatureFile = False # False: single Value stored in Database, True: Matrix stored in FeatureFile
+    storeAsFeatureFile = True # False: single Value stored in Database, True: Matrix stored in FeatureFile
     
     def __init__(self):
         self.timedelta = 2 # in seconds (max: 60)
         pass
+    
+    def modifieData(self, data):
+        returnData = data
+        return returnData
     
     def process(self, startTime, endTime, existingFeatures):
         if self.storeAsFeatureFile == False:
@@ -25,7 +29,7 @@ class Example:
         elif self.storeAsFeatureFile == True:
             ## Example for Values in FeatureFile
             Frames = 4799
-            Dim = 4
+            Dim = 2
             FrameSizeInSamples = 600
             HopSizeInSamples = 300
             fs = 2400
