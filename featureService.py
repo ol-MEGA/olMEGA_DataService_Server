@@ -9,6 +9,7 @@ from olMEGA_DataService_Server.dataConnectors import databaseConnector
 from random import randint
 import struct
 import glob
+import time
 
 class FeatureService():
 
@@ -217,7 +218,8 @@ class FeatureService():
                         if len(data):
                             files = []
                             lastItem = {"datachunkid": "", "subject": "", "filename": ""}
-                            data.append(lastItem.copy())
+                            if len(data) < limit:
+                                data.append(lastItem.copy())
                             for item in data:
                                 if "start" in item:
                                     lastRow = item["subject"] + item["start"] + item["datachunkid"]
@@ -257,7 +259,8 @@ class FeatureService():
                         if len(data):
                             files = []
                             lastItem = {"datachunkid": "", "subject": "", "filename": ""}
-                            data.append(lastItem.copy())
+                            if len(data) < limt:
+                                data.append(lastItem.copy())
                             for item in data:
                                 if "start" in item:
                                     lastRow = item["subject"] + item["start"] + item["datachunkid"]
@@ -267,6 +270,7 @@ class FeatureService():
                                         values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **self.loadFeatureFileData(files)})
                                         for value in values:
                                             if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
+                                                start = time.time()
                                                 filename = plugin.feature.lower() + "_" + str(randint(100000, 999999)) + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
                                                 if value["value"].dtype == 'complex64':
                                                     temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
@@ -290,9 +294,10 @@ class FeatureService():
                                                     with open(os.path.join("FeatureFiles", lastItem["subject"], filename), mode='wb') as filewriter:
                                                         filewriter.write(header)
                                                         filewriter.write(content)
+                                                    print("Duration: ", time.time() - start)
                                                     queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                                     except:
-                                        pass
+                                        print(sys.exc_info()[1])
                                     files = []
                                 if item["subject"] != lastItem["subject"]:
                                     currentPlugin = plugin()
@@ -307,5 +312,5 @@ class FeatureService():
 
 if __name__ == "__main__":
     featureService = FeatureService()
-    #featureService.removeFeature("testFeature")
+    #featureService.removeFeature("Coherence")
     featureService.run()
