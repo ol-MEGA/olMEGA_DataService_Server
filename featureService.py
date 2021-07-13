@@ -42,10 +42,9 @@ class FeatureService():
                                         newFeatureId = str(uuid.uuid4())
                                         query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (newFeatureId, plugin.feature.lower(), plugin.description)
                                         self.db.execute_query(query)
-                                        if main.develServer:
-                                            for usergroup in usergroups:
-                                                query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), newFeatureId, usergroup["id"], 1, 0)
-                                                self.db.execute_query(query)
+                                        for usergroup in usergroups:
+                                            query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), newFeatureId, usergroup["id"], main.develServer, 0)
+                                            self.db.execute_query(query)
                                 elif plugin.storeAsFeatureFile == True:
                                     plugin.feature = plugin.feature.replace("_", "")
                                     query = 'SELECT * FROM EMA_filetype WHERE FileExtension = "%s"' % plugin.feature.lower()
@@ -54,6 +53,18 @@ class FeatureService():
                                         FeatureFileTypesId = str(uuid.uuid4())
                                         query = 'INSERT INTO EMA_filetype (ID, FileExtension) VALUES ("%s", "%s")' % (FeatureFileTypesId, plugin.feature.lower())
                                         self.db.execute_query(query)
+                                    query = 'SELECT * FROM EMA_Feature WHERE name like "%s"' % plugin.feature.lower()
+                                    Features = self.db.execute_query(query)
+                                    if len(Features) == 0:
+                                        newFeatureId = str(uuid.uuid4())
+                                        query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (newFeatureId, plugin.feature.lower(), plugin.description)
+                                        self.db.execute_query(query)
+                                    query = 'SELECT count(ID) FROM EMA_authorization WHERE Feature_ID = "%s"' % (FeatureFileTypes[0]["id"])
+                                    Authorizations = self.db.execute_query(query)
+                                    if Authorizations[0]["count(id)"] == 0:
+                                        for usergroup in usergroups:
+                                            query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), FeatureFileTypes[0]["id"], usergroup["id"], main.develServer, 0)
+                                            self.db.execute_query(query)
         self.db.connection.commit()
         
     def loadFeatureFileData(self, filenames):
@@ -80,8 +91,11 @@ class FeatureService():
                             try:                                
                                 featureFileData[fileNameParts[0]] = plugin().modifieData(data)
                                 hasDataModified = True
-                            except:
-                                print(sys.exc_info()[1])
+                            except Exception as e:
+                                if hasattr(e, 'message'):
+                                    print("Error: ", e.message)
+                                else:
+                                    print("Error: ", e)
                                 featureFileData[fileNameParts[0]] = data
                             break;
                     if hasDataModified == False:
@@ -114,15 +128,19 @@ class FeatureService():
                 self.db.execute_query(query)
                 query = 'delete from EMA_featurevalue where Feature_ID = "%s"' % feature[0]["id"]
                 self.db.execute_query(query)
-                query = 'delete from EMA_feature where ID = "%s"' % feature[0]["id"]
+                query = 'delete from EMA_feature where Name = "%s"' % featureName.lower()
                 self.db.execute_query(query)
                 self.db.connection.commit()
             query = 'SELECT ID from EMA_filetype WHERE FileExtension = "%s"' % featureName.lower().replace("_", "")
             featurefile = self.db.execute_query(query)
             if len(featurefile) > 0:
+                query = 'delete from EMA_authorization where Feature_ID = "%s"' % featurefile[0]["id"]
+                self.db.execute_query(query)
                 query = 'delete from EMA_file where FileType_ID = "%s"' % featurefile[0]["id"]
                 self.db.execute_query(query)
                 query = 'delete from EMA_filetype where ID = "%s"' % featurefile[0]["id"]
+                self.db.execute_query(query)
+                query = 'delete from EMA_feature where Name = "%s"' % featureName.lower()
                 self.db.execute_query(query)
                 self.db.connection.commit()
             files = glob.glob(os.path.join('FeatureFiles', '**', '%s*.feat' % (featureName.lower().replace("_", ""))), recursive=True)
@@ -184,8 +202,11 @@ class FeatureService():
                                 isValid = currentPlugin.process(feature["name"], item, previousFeatures)
                                 if isValid.value != item["isvalid"]:
                                     queryValueList[isValid.value + 1].append('ID = "%s"' % (item["id"]))
-                            except:
-                                pass
+                            except Exception as e:
+                                if hasattr(e, 'message'):
+                                    print("Error: ", e.message)
+                                else:
+                                    print("Error: ", e)
                             lastId = item["id"]
                             
                         for idx in range(len(queryValueList)):
@@ -193,10 +214,7 @@ class FeatureService():
                                 query = 'UPDATE %s SET isValid = %d, LastUpdate = "%s" WHERE %s' % (table, idx - 1, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), " or ".join(queryValueList[idx]))
                                 self.db.execute_query(query)
                                 self.db.connection.commit()
-                                
                         print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-            
-        
         for plugin in self.FeaturePlugins:
             if plugin.isActive:
                 lastRow = ""
@@ -230,8 +248,11 @@ class FeatureService():
                                         for value in values:
                                             if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
                                                 queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                                    except:
-                                        pass
+                                    except Exception as e:
+                                        if hasattr(e, 'message'):
+                                            print(e.message)
+                                        else:
+                                            print(e)
                                     files = []
                                 if item["subject"] != lastItem["subject"]:
                                     currentPlugin = plugin()
@@ -256,10 +277,11 @@ class FeatureService():
                             AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > "%s" \
                             order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %d' % (plugin.feature.lower(), lastRow, limit)
                         data = self.db.execute_query(query)
+                        start = time.time()
                         if len(data):
                             files = []
                             lastItem = {"datachunkid": "", "subject": "", "filename": ""}
-                            if len(data) < limt:
+                            if len(data) < limit:
                                 data.append(lastItem.copy())
                             for item in data:
                                 if "start" in item:
@@ -268,43 +290,44 @@ class FeatureService():
                                     previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
                                     try:
                                         values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **self.loadFeatureFileData(files)})
-                                        for value in values:
-                                            if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
-                                                start = time.time()
-                                                filename = plugin.feature.lower() + "_" + str(randint(100000, 999999)) + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
-                                                if value["value"].dtype == 'complex64':
-                                                    temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
-                                                    temp[:, 0::2] = numpy.real(value["value"])
-                                                    temp[:, 1::2] = numpy.imag(value["value"])
-                                                    value["value"] = temp
-                                                
-                                                header = bytearray()
-                                                header += value["value"].shape[0].to_bytes(4, "big")
-                                                header += (value["value"].shape[1] + 2).to_bytes(4, "big")
-                                                header += value["FrameSizeInSamples"].to_bytes(4, "big")
-                                                header += value["HopSizeInSamples"].to_bytes(4, "big")
-                                                header += value["fs"].to_bytes(4, "big")
-                                                header += bytearray(value["BlockTime"], "utf-8")
-                                                if len(header) != 36:
-                                                    print ("Warning: Header has wrong len, File not saved!")
-                                                else:
-                                                    content = bytearray()
-                                                    for val in numpy.concatenate((numpy.zeros([value["value"].shape[0], 2]),  value["value"]), axis = 1).flatten():
-                                                        content += bytearray(struct.pack(">f", val))
-                                                    with open(os.path.join("FeatureFiles", lastItem["subject"], filename), mode='wb') as filewriter:
-                                                        filewriter.write(header)
-                                                        filewriter.write(content)
-                                                    print("Duration: ", time.time() - start)
-                                                    queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                                    except:
-                                        print(sys.exc_info()[1])
+                                        if values:
+                                            for value in values:
+                                                if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
+                                                    filename = plugin.feature.lower() + "_" + str(randint(100000, 999999)) + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
+                                                    if str(value["value"].dtype).startswith('complex'):
+                                                        temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
+                                                        temp[:, 0::2] = numpy.real(value["value"])
+                                                        temp[:, 1::2] = numpy.imag(value["value"])
+                                                        value["value"] = temp
+                                                    header = bytearray()
+                                                    header += value["value"].shape[0].to_bytes(4, "big")
+                                                    header += (value["value"].shape[1] + 2).to_bytes(4, "big")
+                                                    header += value["FrameSizeInSamples"].to_bytes(4, "big")
+                                                    header += value["HopSizeInSamples"].to_bytes(4, "big")
+                                                    header += value["fs"].to_bytes(4, "big")
+                                                    header += bytearray(value["BlockTime"], "utf-8")
+                                                    if len(header) != 36:
+                                                        print ("Warning: Header has wrong len, File not saved!")
+                                                    else:
+                                                        content = bytearray()
+                                                        for val in numpy.concatenate((numpy.zeros([value["value"].shape[0], 2]),  value["value"]), axis = 1).flatten():
+                                                            content += bytearray(struct.pack(">f", val))
+                                                        with open(os.path.join("FeatureFiles", lastItem["subject"], filename), mode='wb') as filewriter:
+                                                            filewriter.write(header)
+                                                            filewriter.write(content)
+                                                        queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                    except Exception as e:
+                                        if hasattr(e, 'message'):
+                                            print("Error: ", e.message)
+                                        else:
+                                            print("Error: ", e)
                                     files = []
                                 if item["subject"] != lastItem["subject"]:
                                     currentPlugin = plugin()
                                 lastItem = item
                                 files.append(os.path.join("FeatureFiles", item["subject"], item["filename"]))
                         if len(queryFileList):
-                            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                            print("Duration for ", len(data), " Datarows: ", time.time() - start)
                             query = 'INSERT INTO EMA_File (ID, DataChunk_Id, FileType_Id, Filename, isValid, LastUpdate) VALUES ' + ','.join(queryFileList)
                             self.db.execute_query(query)
                     pass
