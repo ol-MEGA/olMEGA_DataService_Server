@@ -293,7 +293,11 @@ class dataConnector(object):
         filesToExport = []
         for idx in reversed(range(len(filenames))):
             filename = os.path.basename(filenames[idx])
-            if os.path.isfile(filenames[idx]) and (not filenames[idx] in filesToExport) and (len([row["allowread"] for row in self.UserRights["authorization"] if row["name"] == filename[0:3].lower()]) != 0 and [row["allowread"] for row in self.UserRights["authorization"] if row["name"] == filename[0:3].lower()][0] != 0):
+            countAllowread = 0
+            for row in self.UserRights["authorization"]:
+                if "allowread" in row.keys() and row["allowread"] and "name" in row.keys() and row["name"] == filename.split("_")[0].lower():
+                    countAllowread += 1
+            if os.path.isfile(filenames[idx]) and (not filenames[idx] in filesToExport) and (countAllowread != 0):
                 filesToExport.append(filenames[idx])
         return self.dictKeysToLower(filesToExport)
 

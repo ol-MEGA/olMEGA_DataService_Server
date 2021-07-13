@@ -56,14 +56,16 @@ class FeatureService():
                                     query = 'SELECT * FROM EMA_Feature WHERE name like "%s"' % plugin.feature.lower()
                                     Features = self.db.execute_query(query)
                                     if len(Features) == 0:
-                                        newFeatureId = str(uuid.uuid4())
-                                        query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (newFeatureId, plugin.feature.lower(), plugin.description)
+                                        FeatureId = str(uuid.uuid4())
+                                        query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (FeatureId, plugin.feature.lower(), plugin.description)
                                         self.db.execute_query(query)
-                                    query = 'SELECT count(ID) FROM EMA_authorization WHERE Feature_ID = "%s"' % (FeatureFileTypes[0]["id"])
+                                    else:
+                                        FeatureId = Features[0]["id"]
+                                    query = 'SELECT count(ID) FROM EMA_authorization WHERE Feature_ID = "%s"' % (FeatureId)
                                     Authorizations = self.db.execute_query(query)
                                     if Authorizations[0]["count(id)"] == 0:
                                         for usergroup in usergroups:
-                                            query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), FeatureFileTypes[0]["id"], usergroup["id"], main.develServer, 0)
+                                            query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), FeatureId, usergroup["id"], main.develServer, 0)
                                             self.db.execute_query(query)
         self.db.connection.commit()
         
