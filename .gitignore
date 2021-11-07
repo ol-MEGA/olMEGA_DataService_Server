@@ -1,1 +1,5 @@
 FeatureFiles/
+
+db.sqlite3
+
+settings.json
