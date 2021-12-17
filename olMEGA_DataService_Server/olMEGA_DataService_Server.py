@@ -85,6 +85,7 @@ class olMEGA_DataService_Server(object):
         self.app.secret_key = 'RSEFJW8piJSbmNNz2e0k-4i1huEd0ko_igHDCj1k'
         self.app.config['SESSION_TYPE'] = 'filesystem'
         self.app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=5)
+        self.app.debug = config["MAIN"]["Debug"] == 'True' or config["MAIN"]["Debug"] == '1' or config["MAIN"]["Debug"] == 1
         self.app.config['SESSION_FILE_THRESHOLD'] = 100 
         Session(self.app)
         

@@ -48,7 +48,7 @@ class databaseConnector(object):
             self.connection.row_factory = dict_factory
             self.cursor = self.connection.cursor()
         self.startTime = time.time()
-        self.printQuery = False
+        self.printQuery = config["DATABASE"]["PrintQuerys"] == 'True' or config["DATABASE"]["PrintQuerys"] == '1' or config["DATABASE"]["PrintQuerys"] == 1
         self.timeout = timeout
         
     def getDatabasePath(self):
