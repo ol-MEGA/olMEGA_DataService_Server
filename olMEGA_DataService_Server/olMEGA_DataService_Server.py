@@ -30,7 +30,7 @@ class olMEGA_DataService_Server(object):
             log.setLevel(logging.ERROR)
         self.forbiddenTables = ["authorization", "user", "usergroup"]
         self.dataTables = {}
-        database = databaseConnector()
+        database = databaseConnector(dbType = "mySQL")
         if database.db == "mySQL":
             print ("  ****************************************************************************************")
             print ("  *                                                                                      *")
