@@ -62,11 +62,15 @@ class dBTable(object):
         
     def getDataSet_Conditions_Comparison(self, field, value):
         myConditions = []
+        myValues = {}
         fieldType = self.allFields[[item[0] for item in self.allFields].index(field.lower())][1]
         if value.find("||") >= 0:
             tmp = []
+            tmpValues = {}
             for item in value.split("||"):
-                tmp += self.getDataSet_Conditions_Comparison(field, item)
+                tmpItems, tmpValues = self.getDataSet_Conditions_Comparison(field, item)
+                tmp += tmpItems
+                myValues.update(tmpValues)
             myConditions.append("(" +  " or ".join([v for v in tmp]) + ")")
         else:
             if type(value) is str and len(value) > 1 and value[0] == "[" and "]" in value:  
@@ -90,56 +94,72 @@ class dBTable(object):
                 elif tmpValue[1].startswith("!="):
                     tmpValue[0] = "<>"
                     tmpValue[1] = tmpValue[1][2:]
-                if tmpValue[0] == "":
+                else:
                     tmpValue[0] = "="
                 if field == "id" and len(str(tmpValue[1])) > 0 and str(tmpValue[1])[0] == "[":
                     pass
                 elif fieldType.startswith("datetime"):
-                    tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " '" + str(tmpValue[1]) + "'") 
+                    #tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " '" + str(tmpValue[1]) + "'") 
+                    tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " %(" + self.prefix + self.name + "_" + field + ")s")
+                    myValues[self.prefix + self.name + "_" + field] = tmpValue[1]
                 elif fieldType == "bool" or fieldType == "tinyint(1)":
                     if str(tmpValue[1]).upper() == "TRUE" or str(tmpValue[1]).upper() == "1":
                         tmpValue[1] = 1
                     else:
                         tmpValue[1] = 0
-                    tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " " + str(tmpValue[1]) + " ") 
+                    #tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " " + str(tmpValue[1]) + " ") 
+                    tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " %(" + self.prefix + self.name + "_" + field + ")s")
+                    myValues[self.prefix + self.name + "_" + field] = tmpValue[1]
                 elif fieldType == "real" or fieldType == "double" or fieldType == "integer" or fieldType.startswith("int("):
                     if "." in str(tmpValue[1]):
                         r = str(len(str(tmpValue[1])[str(tmpValue[1]).index(".") + 1 :]))
-                        tmpConditions.append("round(" + self.prefix + self.name + "." + field + ", " + r + ") = round(" + str(tmpValue[1]) + ", " + r + ")")
+                        #tmpConditions.append("round(" + self.prefix + self.name + "." + field + ", " + r + ") = round(" + str(tmpValue[1]) + ", " + r + ")")
+                        tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " round(%(" + self.prefix + self.name + "_" + field + ")s" + ")")
+                        myValues[self.prefix + self.name + "_" + field] = tmpValue[1]
                     else:
-                        tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " " + str(tmpValue[1]))
+                        #tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " " + str(tmpValue[1]))
+                        tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " %(" + self.prefix + self.name + "_" + field + ")s")
+                        myValues[self.prefix + self.name + "_" + field] = tmpValue[1]
                 else: # "varchar" in fieldType or fieldType == "text" or 
                     if str(tmpValue[1]).startswith("%") or str(tmpValue[1]).endswith("%"):
                         tmpValue[0] = " like "
-                    tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " '" + str(tmpValue[1]) + "'")
+                    #tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " '" + str(tmpValue[1]) + "'")
+                    tmpConditions.append(self.prefix + self.name + "." + field + " " + tmpValue[0] + " %(" + self.prefix + self.name + "_" + field + ")s")
+                    myValues[self.prefix + self.name + "_" + field] = tmpValue[1]
                 if len(tmpConditions) > 0:
                     myConditions.append(" and ".join(tmpConditions))
-        return myConditions
+        return myConditions, myValues
         
     def getDataSet_Conditions(self, conditions, returnAsList = False):
         strWhere = ""
         myConditions = []
+        myValues = {}
         if conditions:
             for field in list(set(conditions.keys()).intersection([item[0] for item in self.allFields])):
-                myConditions += self.getDataSet_Conditions_Comparison(field, conditions[field])
+                tmpConditions, tmpValues = self.getDataSet_Conditions_Comparison(field, conditions[field])
+                myConditions += tmpConditions
+                myValues.update(tmpValues)
                 del conditions[field]
             if len(myConditions):
                 strWhere += " WHERE " + " AND ".join(myConditions)
         if returnAsList == False:
-            return strWhere
+            return strWhere, myValues
         else:
-            return myConditions
+            return myConditions, myValues
     
     def getConditionalWhereStatement(self, conditions = False):
         whereStatement = []
         if conditions:
             if self.name in conditions.keys():
                 conditions = conditions[self.name]
-        whereStatement.extend(self.getDataSet_Conditions(conditions, True))
+        conditionStatement, values = self.getDataSet_Conditions(conditions, True)
+        whereStatement.extend(conditionStatement)
         for table in self.childTables:
             #if conditions and table.name in conditions.keys():
             if conditions and table.name in conditions.keys():
-                whereStatement.extend(table.getConditionalWhereStatement(conditions[table.name]))
+                conditionStatement, tmpValues = table.getConditionalWhereStatement(conditions[table.name])
+                values.update(tmpValues)
+                whereStatement.extend(conditionStatement)
         for parent in self.parentTables:
             tmpConditions =  {parent.name : {}}
             if conditions:
@@ -152,8 +172,10 @@ class dBTable(object):
                 tmpList += list(set(conditions[parent.name].keys()).intersection([item[0] for item in parent.fields]))
                 if len(tmpList) > 0:
                     tmpConditions[parent.name].update([{item : conditions[parent.name][item]} for item in tmpList][0])
-            whereStatement.extend(parent.getConditionalWhereStatement(tmpConditions))
-        return whereStatement
+            conditionStatement, tmpValues = parent.getConditionalWhereStatement(tmpConditions)
+            values.update(tmpValues)
+            whereStatement.extend(conditionStatement)
+        return whereStatement, values
             
     def getDataSet(self, database, conditions = False, recursive = True, callingTableName = ""):
         if conditions:
@@ -177,19 +199,22 @@ class dBTable(object):
             elif self.name == "featurevalue":
                 orderBy = " ORDER BY " + self.prefix + self.name + ".start, " + self.prefix + self.name + ".Feature_id, " + self.prefix + self.name + ".Side"
             if blnUseExtendedSQL:                            
-                conditionList = self.getConditionalWhereStatement(conditions)
+                conditionList, values = self.getConditionalWhereStatement(conditions)
                 strFromAndJoin = "FROM " + self.prefix + self.name + " " + " ".join(self.SQL["join"]) + " " + " ".join(self.SQL["joinparent"])
                 for count in reversed(range(len(conditionList))):
                     tmp = conditionList[count].split(".", 1)
                     if not(len(tmp) > 0 and strFromAndJoin.find(tmp[0] + ".") >= 0):
                         del conditionList[count]
+                        del values[count]
                 strSql = "SELECT DISTINCT " + self.prefix + self.name + ".* " + strFromAndJoin + " WHERE " + " AND ".join(conditionList)
             else:
-                strSql = "SELECT DISTINCT " + self.prefix + self.name + ".* FROM " + self.prefix + self.name + self.getDataSet_Conditions(conditions)
-            mainTable = database.execute_query(strSql + orderBy)
+                conditionStatement, values = self.getDataSet_Conditions(conditions)
+                strSql = "SELECT DISTINCT " + self.prefix + self.name + ".* FROM " + self.prefix + self.name + conditionStatement
+            mainTable = database.execute_query(strSql + orderBy, values)
         except Exception as e:
-            strSql = "SELECT DISTINCT " + self.prefix + self.name + ".* FROM " + self.prefix + self.name + self.getDataSet_Conditions(conditions)
-            mainTable = database.execute_query(strSql)
+            conditionStatement, values = self.getDataSet_Conditions(conditions, False)
+            strSql = "SELECT DISTINCT " + self.prefix + self.name + ".* FROM " + self.prefix + self.name + conditionStatement
+            mainTable = database.execute_query(strSql, values)
         returnTable = []
         for row in mainTable:
             addRowToFinalDataset = True
@@ -252,8 +277,10 @@ class dBTable(object):
                         if oldRow and oldRow["hash"] == newRow["id"] and not [oldRow[item] for item in fields] == [newRow[item] for item in fields]:
                             if "lastupdate" in [item[0] for item in self.fields]:
                                 newRow["lastupdate"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            strSql = "UPDATE " + self.prefix + self.name + " SET " + ", ".join([item[0] + " = '" + str(newRow[item[0]]) + "'" for item in self.fields if not newRow[item[0]] == oldRow[item[0]]]) + " WHERE id = '" + oldRow["id"] + "'"
-                            database.execute_query(strSql)
+                            values = {self.prefix + self.name + "_" + item[0]: newRow[item[0]] for item in self.fields if not newRow[item[0]] == oldRow[item[0]]}
+                            values.update({self.prefix + self.name + "_id" : oldRow["id"]})
+                            strSql = "UPDATE " + self.prefix + self.name + " SET " + ", ".join([item[0] + " = %(" + self.prefix + self.name +"_" + item[0] + ")s" for item in self.fields if not newRow[item[0]] == oldRow[item[0]]]) + " WHERE id = %(" + self.prefix + self.name + "_id)s"
+                            database.execute_query(strSql, values)
                         elif oldRow == False:
                             if not "id" in newRow.keys():
                                 if "lastupdate" in newRow.keys():
@@ -283,8 +310,8 @@ class dBTable(object):
         count = 0
         if type(idList) is list:
             for item in idList:
-                strSql = "DELETE FROM " + self.prefix + self.name + " WHERE ID = '" + item + "'"
-                database.execute_query(strSql)
+                strSql = "DELETE FROM " + self.prefix + self.name + " WHERE ID = %(ID)s"
+                database.execute_query(strSql, {"ID" : item})
                 count += 1
         return {"ROWSAFFECTED": count}
                         
@@ -303,18 +330,20 @@ class dBTable(object):
                     for parent in self.parentTables:
                         fields = list(set(newRow.keys()).intersection([item[0] for item in parent.fields]))
                         if not callingTableName == parent.name and len(fields):
-                            strSql = "SELECT DISTINCT id FROM " + self.prefix + parent.name + " WHERE " + " AND ".join([item + " = '" + str(newRow[item]) + "'" for item in fields])
+                            values = {self.prefix + parent.name + "_" + item : newRow[item] for item in fields}
+                            strSql = "SELECT DISTINCT id FROM " + self.prefix + parent.name + " WHERE " + " AND ".join([item + " = %(" + self.prefix + parent.name + "_" + item + ")s" for item in fields])
                             if not hasattr(self, "strSql_old") or self.strSql_old != strSql:
-                                self.parentTable = database.execute_query(strSql)
+                                self.parentTable = database.execute_query(strSql, values)
                                 self.strSql_old = strSql
                             if len(self.parentTable) == 1:
                                 newRow[parent.name + "_id"] = self.parentTable[0]["id"]
                             elif len(self.parentTable) == 0:
                                 self.strSql_old = ""
+                                values = {self.prefix + parent.name + "_" + item : newRow[item] for item in fields + [parent.name + "_id"]}
                                 newRow[parent.name + "_id"] = str(uuid.uuid4())                                    
-                                strSql = "INSERT INTO " + self.prefix + parent.name + " (" + ", ".join(fields + ["id"]) + ") VALUES (" + ", ".join(["'" + str(newRow[item]) + "'" for item in fields + [parent.name + "_id"]]) + ");"
+                                strSql = "INSERT INTO " + self.prefix + parent.name + " (" + ", ".join(fields + ["id"]) + ") VALUES (" + ", ".join(["%(" + self.prefix + parent.name + "_" + item +")s" for item in fields + [parent.name + "_id"]]) + ");"
                                 #database.tempQuery += strSql
-                                database.execute_query(strSql)
+                                database.execute_query(strSql, values)
                     
                     if blnNewRew:
                         fields = list(set(newRow.keys()).intersection([item[0] for item in self.allFields]))
@@ -322,7 +351,7 @@ class dBTable(object):
                             fieldType = [item[1] for item in self.allFields if item[0] == field]
                             if len(fieldType) == 1:
                                 if fieldType[0].startswith("datetime"):
-                                    newRow[field] = "'" + str(newRow[field]) + "'" 
+                                    newRow[field] = str(newRow[field])
                                 elif fieldType[0] == "bool" or fieldType[0] == "tinyint(1)":
                                     if str(newRow[field]).upper() == "TRUE" or str(newRow[field]) == "1":
                                         newRow[field] = "1"
@@ -331,11 +360,12 @@ class dBTable(object):
                                 elif fieldType[0] == "real" or fieldType[0] == "double" or fieldType[0] == "integer" or fieldType[0].startswith("int("):                                        
                                     newRow[field] = str(newRow[field])
                                 elif not (str(newRow[field]).startswith("'") and str(newRow[field]).endswith("'")): 
-                                    newRow[field] = "'" + str(newRow[field]) + "'" 
-                        strSql = "INSERT INTO " + self.prefix + self.name + " (" + ", ".join(fields) + ") VALUES (" + ", ".join([newRow[item] for item in fields]) + ");"
+                                    newRow[field] = str(newRow[field])
+                        values = {self.prefix + self.name + "_" + item : newRow[item] for item in fields}
+                        strSql = "INSERT INTO " + self.prefix + self.name + " (" + ", ".join(fields) + ") VALUES (" + ", ".join(["%(" + self.prefix + self.name + "_" + item + ")s" for item in fields]) + ");"
                         #database.tempQuery += strSql
                         try:
-                            database.execute_query(strSql)
+                            database.execute_query(strSql, values)
                         except (sqlite3.IntegrityError, mysql.connector.errors.DatabaseError):
                             print (strSql)
                             database.close()

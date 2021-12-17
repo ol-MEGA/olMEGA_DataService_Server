@@ -4,5 +4,5 @@ from olMEGA_DataService_Server import olMEGA_DataService_Server as app
 develServer = True
 
 if __name__ == "__main__":
-    Server = app.olMEGA_DataService_Server('olMEGA_DataService_Server', debug = develServer, cert = 'devel_cert.pem', key = 'devel_key.pem')
+    Server = app.olMEGA_DataService_Server()
     Server.run()

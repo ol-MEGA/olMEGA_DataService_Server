@@ -1,3 +1,4 @@
+import configparser
 import sqlite3
 import copy
 import datetime
@@ -6,6 +7,7 @@ import xml.etree.ElementTree as ET
 from dateutil.parser import parse
 import mysql.connector as mysql
 import time
+import zlib
 
 def validate(date_text):
     try:
@@ -21,25 +23,32 @@ def dict_factory(cursor, row):
     return d
 
 class databaseConnector(object):
-    def __init__(self, dbType = "sqlite3", timeout = 60 * 5):
-        self.db = dbType
+    def __init__(self, timeout = 60 * 5, readlOnly = True):
+        config = configparser.ConfigParser()
+        config.read('settings.conf')
+
+        self.db = config["DATABASE"]["Type"]
         #self.db = "sqlite3"
         if self.db == "mySQL":
-            self.connection = mysql.connect(
-                host = "localhost",
-                user = "djangouser",
-                passwd = "mypassword",
-                database = "django_db"
-            )
+            host = config["DATABASE"]["Host"]
+            user = config["DATABASE"]["User"]
+            passwd = config["DATABASE"]["Passwd"]
+            database = config["DATABASE"]["Database"]
+            if readlOnly:
+                user += "_readonly"
+            self.connection = mysql.connect(host = host, user = user, passwd = passwd, database = database)
             self.cursor = self.connection.cursor(dictionary=True, buffered=False)
         elif self.db == "sqlite3":
             if str(self.getDatabasePath()) == "":
                 raise FileNotFoundError
-            self.connection = sqlite3.connect(self.getDatabasePath())
+            if readlOnly:
+                self.connection = sqlite3.connect("file:" + self.getDatabasePath() + "?mode=ro", uri=True)
+            else:
+                self.connection = sqlite3.connect(self.getDatabasePath())
             self.connection.row_factory = dict_factory
             self.cursor = self.connection.cursor()
         self.startTime = time.time()
-        self.printQuery = False
+        self.printQuery = config["DATABASE"]["PrintQuerys"] == 'True' or config["DATABASE"]["PrintQuerys"] == '1' or config["DATABASE"]["PrintQuerys"] == 1
         self.timeout = timeout
         
     def getDatabasePath(self):
@@ -55,15 +64,23 @@ class databaseConnector(object):
     def resetTimer(self):
         self.startTime = time.time()
 
-    def execute_query(self, query):
+    def execute_query(self, query, values):
         if time.time() - self.startTime > self.timeout:
             print(query)
             raise TimeoutError
         if not query.endswith(";"):
             query += ";"
-        if self.printQuery:
-            print(query);
-        self.cursor.execute(query)
+        if self.db == "sqlite3":
+            if self.printQuery:
+                self.connection.set_trace_callback(print)
+            else:
+                self.connection.set_trace_callback(None)
+            if type(values) is dict:
+                for key in values.keys():
+                    query = query.replace("%(" + key + ")s", ":" + key)
+        self.cursor.execute(query, values)
+        if self.db == "mySQL" and self.printQuery:
+            print(self.cursor._executed)
         if self.db == "mySQL":
             pass
         elif self.db == "sqlite3":
@@ -82,10 +99,10 @@ class databaseConnector(object):
         pass
 
 class dataConnector(object):
-    def __init__(self, dataTables, forbiddenTables, UserRights, returnRawTable = False, timeout = 60 * 10):
+    def __init__(self, dataTables, forbiddenTables, UserRights, returnRawTable = False, timeout = 60 * 10, readlOnly = True):
         self.FeatureFilesFolder = "FeatureFiles"
         self.lastDataset = None
-        self.database = databaseConnector(timeout = timeout)
+        self.database = databaseConnector(timeout = timeout, readlOnly = readlOnly)
         self.dataTables = dataTables
         self.forbiddenTables = forbiddenTables
         self.returnRawTable = returnRawTable        
@@ -181,7 +198,7 @@ class dataConnector(object):
             strSql += " WHERE " + where
         if limit != "":
             strSql += " LIMIT " + limit
-        return self.database.execute_query(strSql)
+        return self.database.execute_query(strSql, [])
         #print (strSql)
 
     def updateDataSet(self, dataset, lastDataset = None, internalCall = False):
@@ -229,9 +246,24 @@ class dataConnector(object):
                     
     def importFiles(self, data, filedata):
         if not(type(self.UserRights) is dict and self.UserRights["user"]["allow_fileupload"] == 1):
-            raise PermissionError("Uploading Files not allowed!")            
+            raise PermissionError("Uploading Files not allowed!")
+
+        fileConent = filedata.read()
+        compressed_data = zlib.compress(fileConent)
+        filedata.close()
+
+        Version = int.from_bytes(fileConent[0:4], byteorder='big')
+        if Version != 4:
+            raise ValueError("Uploaded File must be in feature header version 4 format!")
+        else:
+            headerSize = 97
+            BlockCount = int.from_bytes(fileConent[4:8], byteorder='big')
+            FeatureDimension = int.from_bytes(fileConent[8:12], byteorder='big')
+            if headerSize + BlockCount * FeatureDimension * 4 != len(fileConent):
+                raise ValueError("Uploaded File is not a valid feature header version 4 file!")
         data = self.dictKeysToLower(data)
-        validFileTypes = self.database.execute_query("SELECT DISTINCT EMA_filetype.* FROM EMA_filetype")
+
+        validFileTypes = self.database.execute_query("SELECT DISTINCT EMA_filetype.* FROM EMA_filetype", [])
         fileNameComponents = data["filename"].lower().replace(".feat", "").split("_")
         if fileNameComponents[0].lower() in [item['fileextension'].lower() for item in validFileTypes]:
             if not os.path.isdir(os.path.join(self.FeatureFilesFolder, data["subject"])):
@@ -267,8 +299,12 @@ class dataConnector(object):
                     updatedFile["lastupdate"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     updatedFile["id"] = myFiles[0]["hash"]
                     self.updateDataSet({"file" : [updatedFile]}, {"file": [myFiles[0]]}, True)
-                filedata.save(os.path.join(self.FeatureFilesFolder, data["subject"], data["filename"]))
-                filedata.close()
+
+                file = open(os.path.join(self.FeatureFilesFolder, data["subject"], data["filename"]), "wb")
+                file.write(compressed_data)
+                file.close()
+                #filedata.save(os.path.join(self.FeatureFilesFolder, data["subject"], data["filename"]))
+                #filedata.close()
         return True
     
     def exportFiles(self, dataset):
@@ -381,7 +417,7 @@ class dataConnector(object):
                         for currAnswer in newQuestinare["answer"]:
                             AnswersToImport.append(currAnswer)
                         for AnswerToDelete in AnswersToDelete:
-                            self.database.execute_query("DELETE FROM EMA_answer WHERE id = '" + AnswerToDelete["id"] + "'")
+                            self.database.execute_query("DELETE FROM EMA_answer WHERE id = %(EMA_answer_id)s", {"EMA_answer_id" : AnswerToDelete["id"]})
                         if len(AnswersToImport) > 0:
                             DataChunks[0]["questionnaire"][count]["answer"] = AnswersToImport
                             self.insertDataSet("datachunk", {"datachunk": DataChunks})
