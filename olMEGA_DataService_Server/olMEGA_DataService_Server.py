@@ -85,7 +85,7 @@ class olMEGA_DataService_Server(object):
         self.app.secret_key = 'RSEFJW8piJSbmNNz2e0k-4i1huEd0ko_igHDCj1k'
         self.app.config['SESSION_TYPE'] = 'filesystem'
         self.app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=5)
-        self.app.debug = config["MAIN"]["Debug"]
+        self.app.debug = config["MAIN"]["Debug"] == 'True' or config["MAIN"]["Debug"] == 1
         self.app.config['SESSION_FILE_THRESHOLD'] = 100 
         Session(self.app)
         
@@ -103,7 +103,7 @@ class olMEGA_DataService_Server(object):
             print ("  * WARNING: you are using developer SSH-Keys! Please generate a new Cert- and Key-File! *")
             print ("  *                                                                                      *")
             print ("  ****************************************************************************************")
-        self.app.run(self.host, self.port, ssl_context=(self.cert, self.key))
+        self.app.run(self.host, self.port, ssl_context=(self.cert, self.key), use_reloader=False)
 
     def add_all_endpoints(self):
         self.add_endpoint("/", "/", self.index)
