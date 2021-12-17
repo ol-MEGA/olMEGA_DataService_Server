@@ -18,19 +18,22 @@ import tempfile
 import logging
 import hashlib
 import pathlib
+import configparser
 
 class olMEGA_DataService_Server(object):
     auth = HTTPBasicAuth()   
 
-    def __init__(self, name = 'EMAServer', host = '0.0.0.0', port = 5000, debug = False, cert = 'devel_cert.pem', key = 'devel_key.pem'):
+    def __init__(self):
+        config = configparser.ConfigParser()
+        config.read('settings.conf')
         if sys.version_info[0] < 3:
             raise Exception("Must be using Python 3")
-        if debug == False:
+        if config["MAIN"]["Debug"] == False:
             log = logging.getLogger('werkzeug')
             log.setLevel(logging.ERROR)
         self.forbiddenTables = ["authorization", "user", "usergroup"]
         self.dataTables = {}
-        database = databaseConnector(dbType = "mySQL")
+        database = databaseConnector()
         if database.db == "mySQL":
             print ("  ****************************************************************************************")
             print ("  *                                                                                      *")
@@ -74,21 +77,21 @@ class olMEGA_DataService_Server(object):
         self._is_running = True
         self.lastDataset = False
         self.workingDirectory = os.getcwd()
-        self.cert = cert;
-        self.key = key;
+        self.cert = config["MAIN"]["SSL_Cert"]
+        self.key = config["MAIN"]["SSL_Key"]
         
-        self.app = Flask(name, static_url_path='/static')
+        self.app = Flask(config["MAIN"]["ServerName"], static_url_path='/static')
         self.app.config['BASIC_AUTH_FORCE'] = True
         self.app.secret_key = 'RSEFJW8piJSbmNNz2e0k-4i1huEd0ko_igHDCj1k'
         self.app.config['SESSION_TYPE'] = 'filesystem'
         self.app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=5)
-        self.app.debug = debug
+        self.app.debug = config["MAIN"]["Debug"]
         self.app.config['SESSION_FILE_THRESHOLD'] = 100 
         Session(self.app)
         
         self.auth.verify_password_callback = self.verify_password
-        self.host = host
-        self.port = port
+        self.host = config["MAIN"]["AllowedHost"]
+        self.port = config["MAIN"]["Port"]
         self.add_all_endpoints()
         
     def run(self):

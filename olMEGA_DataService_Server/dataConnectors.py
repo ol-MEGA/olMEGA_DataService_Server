@@ -1,3 +1,4 @@
+import configparser
 import sqlite3
 import copy
 import datetime
@@ -22,14 +23,17 @@ def dict_factory(cursor, row):
     return d
 
 class databaseConnector(object):
-    def __init__(self, dbType = "sqlite3", timeout = 60 * 5, readlOnly = True):
-        self.db = dbType
+    def __init__(self, timeout = 60 * 5, readlOnly = True):
+        config = configparser.ConfigParser()
+        config.read('settings.conf')
+
+        self.db = config["DATABASE"]["Type"]
         #self.db = "sqlite3"
         if self.db == "mySQL":
-            host = "localhost"
-            user = "djangouser"
-            passwd = "mypassword"
-            database = "django_db"
+            host = config["DATABASE"]["Host"]
+            user = config["DATABASE"]["User"]
+            passwd = config["DATABASE"]["Passwd"]
+            database = config["DATABASE"]["Database"]
             if readlOnly:
                 user += "_readonly"
             self.connection = mysql.connect(host = host, user = user, passwd = passwd, database = database)
@@ -98,7 +102,7 @@ class dataConnector(object):
     def __init__(self, dataTables, forbiddenTables, UserRights, returnRawTable = False, timeout = 60 * 10, readlOnly = True):
         self.FeatureFilesFolder = "FeatureFiles"
         self.lastDataset = None
-        self.database = databaseConnector(timeout = timeout, readlOnly = readlOnly, dbType = "mySQL")
+        self.database = databaseConnector(timeout = timeout, readlOnly = readlOnly)
         self.dataTables = dataTables
         self.forbiddenTables = forbiddenTables
         self.returnRawTable = returnRawTable        
