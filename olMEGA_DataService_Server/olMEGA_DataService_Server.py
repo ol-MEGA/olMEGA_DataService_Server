@@ -385,14 +385,16 @@ class olMEGA_DataService_Server(object):
         try:
             if request.is_json:
                 inputData = request.get_json()
-                if "COMMAND" in inputData: # and type(inputData["COMMAND"]) is str and inputData["COMMAND"].lower().startswith("select ") and not "update" in inputData["COMMAND"].lower() and not "delete" in inputData["COMMAND"].lower() and not "insert" in inputData["COMMAND"].lower() and not "create" in inputData["COMMAND"].lower() and not "alter" in inputData["COMMAND"].lower() and not "drop" in inputData["COMMAND"].lower():
-                    if not ";" in inputData["COMMAND"]:
-                        inputData["COMMAND"] += ";"
-                    inputData["COMMAND"] = inputData["COMMAND"][:inputData["COMMAND"].index(";")]
-                    myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
-                    returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
-                    myDataConnector.close()                
-                    return str(returnData)
+                if "COMMAND" in inputData and type(inputData["COMMAND"]) is str: 
+                    inputData["COMMAND"] = str(inputData["COMMAND"]).strip()
+                    if inputData["COMMAND"].lower().startswith("select ") and "select" not in inputData["COMMAND"][1:].lower()  and not "update" in inputData["COMMAND"].lower() and not "delete" in inputData["COMMAND"].lower() and not "insert" in inputData["COMMAND"].lower() and not "create" in inputData["COMMAND"].lower() and not "alter" in inputData["COMMAND"].lower() and not "drop" in inputData["COMMAND"].lower():
+                        if not ";" in inputData["COMMAND"]:
+                            inputData["COMMAND"] += ";"
+                        inputData["COMMAND"] = inputData["COMMAND"][:inputData["COMMAND"].index(";")]
+                        myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
+                        returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
+                        myDataConnector.close()                
+                        return str(returnData)
         except Exception as e:
             return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
     """            
