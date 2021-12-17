@@ -1,0 +1,10 @@
+# directories
+__pycache__/
+FeatureFiles/
+FeaturePlugins/__pycache__/
+ValidationPlugins/__pycache__/
+flask_session/
+
+# files
+db.sqlite3
+settings.json
