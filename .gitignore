@@ -8,3 +8,4 @@ flask_session/
 # files
 db.sqlite3
 settings.json
+*.pyc
