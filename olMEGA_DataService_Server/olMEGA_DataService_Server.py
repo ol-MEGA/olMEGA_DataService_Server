@@ -85,7 +85,6 @@ class olMEGA_DataService_Server(object):
         self.app.secret_key = 'RSEFJW8piJSbmNNz2e0k-4i1huEd0ko_igHDCj1k'
         self.app.config['SESSION_TYPE'] = 'filesystem'
         self.app.config['PERMANENT_SESSION_LIFETIME'] =  timedelta(minutes=5)
-        self.app.debug = config["MAIN"]["Debug"] == 'True' or config["MAIN"]["Debug"] == 1
         self.app.config['SESSION_FILE_THRESHOLD'] = 100 
         Session(self.app)
         
@@ -383,16 +382,18 @@ class olMEGA_DataService_Server(object):
         
     @auth.login_required
     def executeQuery(self):
-        if request.is_json:
-            inputData = request.get_json()
-            if "COMMAND" in inputData: # and type(inputData["COMMAND"]) is str and inputData["COMMAND"].lower().startswith("select ") and not "update" in inputData["COMMAND"].lower() and not "delete" in inputData["COMMAND"].lower() and not "insert" in inputData["COMMAND"].lower() and not "create" in inputData["COMMAND"].lower() and not "alter" in inputData["COMMAND"].lower() and not "drop" in inputData["COMMAND"].lower():
-                if not ";" in inputData["COMMAND"]:
-                    inputData["COMMAND"] += ";"
-                inputData["COMMAND"] = inputData["COMMAND"][:inputData["COMMAND"].index(";")]
-                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
-                returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
-                myDataConnector.close()                
-                return str(returnData)
+        try:
+            if request.is_json:
+                inputData = request.get_json()
+                if "COMMAND" in inputData: # and type(inputData["COMMAND"]) is str and inputData["COMMAND"].lower().startswith("select ") and not "update" in inputData["COMMAND"].lower() and not "delete" in inputData["COMMAND"].lower() and not "insert" in inputData["COMMAND"].lower() and not "create" in inputData["COMMAND"].lower() and not "alter" in inputData["COMMAND"].lower() and not "drop" in inputData["COMMAND"].lower():
+                    if not ";" in inputData["COMMAND"]:
+                        inputData["COMMAND"] += ";"
+                    inputData["COMMAND"] = inputData["COMMAND"][:inputData["COMMAND"].index(";")]
+                    myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
+                    returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
+                    myDataConnector.close()                
+                    return str(returnData)
+        except Exception as e:
             return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
     """            
     @auth.login_required
