@@ -1,3 +1,4 @@
+import zlib
 from olMEGA_DataService_Server.dataConnectors import dataConnector, databaseConnector as databaseConnector
 import olMEGA_DataService_Server.dbTable as dbTable
 import sys
@@ -36,19 +37,19 @@ class olMEGA_DataService_Server(object):
             print ("  * INFO: you are using a mySQL-Database!                                                *")
             print ("  *                                                                                      *")
             print ("  ****************************************************************************************")
-            tables = database.execute_query("SHOW TABLES LIKE 'EMA_%';")
+            tables = database.execute_query("SHOW TABLES LIKE 'EMA_%';", {})
         elif database.db == "sqlite3":
             print ("  ****************************************************************************************")
             print ("  *                                                                                      *")
             print ("  * INFO: you are using a SQLITE3-Database!                                              *")
             print ("  *                                                                                      *")
             print ("  ****************************************************************************************")
-            tables = database.execute_query("SELECT name FROM sqlite_master WHERE type='table' and name like 'EMA_%';")
+            tables = database.execute_query("SELECT name FROM sqlite_master WHERE type='table' and name like 'EMA_%';", {})
         for table in tables:
             if database.db == "mySQL":
-                fields = database.execute_query("SHOW FIELDS FROM " + table[list(table.keys())[0]] + ";")
+                fields = database.execute_query("SHOW FIELDS FROM " + table[list(table.keys())[0]] + ";", {})
             elif database.db == "sqlite3":
-                fields = database.execute_query("PRAGMA table_info('" + table[list(table.keys())[0]] + "');")
+                fields = database.execute_query("PRAGMA table_info('" + table[list(table.keys())[0]] + "');", {})
             tmpTable = dbTable.dBTable(table[list(table.keys())[0]], fields)
             self.dataTables[tmpTable.name] = tmpTable
         for table in self.dataTables:
@@ -238,15 +239,24 @@ class olMEGA_DataService_Server(object):
                 del session["downloadFileList"]
             returnData = True            
             if hasattr(request, 'form') and hasattr(request, 'files') and len(request.files) > 0:
-                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], timeout = 60 * 10)
+                """
+                if type(request.files) is dict and "zip" in request.files.keys():
+                    tempFile = tempfile.NamedTemporaryFile(mode='w', delete=False)
+                    open(tempFile.name, 'wb').write(request.files.content)
+                    with zipfile.ZipFile(tempFile.name,"r") as zip_ref:
+                        zip_ref.extractall(outputFolder)
+                    tempFile.close()
+                """
+                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], timeout = 60 * 10, readlOnly = False)
                 data = json.loads(request.form["data"])
                 for id in data:
                     try:
                         returnData = returnData and myDataConnector.importFiles(data[id], request.files[id])
-                    except:
-                        if self.app.debug:
-                            traceback.print_exc()
-                        returnData = False
+                    except Exception as e:
+                        return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
+                        #if self.app.debug:
+                        #    traceback.print_exc()
+                        #returnData = False
                 myDataConnector.close()
                 del myDataConnector
             return str(returnData)
@@ -279,7 +289,10 @@ class olMEGA_DataService_Server(object):
                         zipf = zipfile.ZipFile(tempFile.name, 'w', zipfile.ZIP_DEFLATED)
                         for idx in reversed(range(len(session["downloadFileList"]))):
                             datasize += os.path.getsize(session["downloadFileList"][idx])
-                            zipf.write(session["downloadFileList"][idx])
+                            with open(session["downloadFileList"][idx], mode='rb') as file:
+                                compressed_data = file.read()
+                            zipf.writestr(session["downloadFileList"][idx], zlib.decompress(compressed_data))
+                            #zipf.write(session["downloadFileList"][idx])
                             del session["downloadFileList"][idx]
                             count += 1
                             if datasize >= 500000000 or count >= 1000:
@@ -308,7 +321,7 @@ class olMEGA_DataService_Server(object):
                 del session["downloadFileList"]
             returnData = True            
             if hasattr(request, 'form') and hasattr(request, 'files') and len(request.files) > 0:
-                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], timeout = 60 * 5)
+                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], timeout = 60 * 5, readlOnly = False)
                 data = json.loads(request.form["data"])
                 for id in data:
                     try:
@@ -338,7 +351,7 @@ class olMEGA_DataService_Server(object):
                     returnData = myDataConnector.createNewFeatureValue(inputData["Feature"])
                     myDataConnector.close()
                     del myDataConnector
-            if len(returnData) == 0:
+            if returnData is None or len(returnData) == 0:
                 raise ValueError("Creating new Value not possible! Feature missing oder invalid!")
             return json.dumps(returnData)
         except Exception as e:
@@ -355,7 +368,7 @@ class olMEGA_DataService_Server(object):
             if request.is_json:
                 inputData = request.get_json()
                 if "Value" in inputData and type(inputData["Value"]) is dict or type(inputData["Value"]) is list:
-                    myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
+                    myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], readlOnly = False)
                     returnData = myDataConnector.saveFeatureValue(inputData["Value"])
                     myDataConnector.close()
                     del myDataConnector
@@ -369,9 +382,12 @@ class olMEGA_DataService_Server(object):
     def executeQuery(self):
         if request.is_json:
             inputData = request.get_json()
-            if "COMMAND" in inputData:
+            if "COMMAND" in inputData: # and type(inputData["COMMAND"]) is str and inputData["COMMAND"].lower().startswith("select ") and not "update" in inputData["COMMAND"].lower() and not "delete" in inputData["COMMAND"].lower() and not "insert" in inputData["COMMAND"].lower() and not "create" in inputData["COMMAND"].lower() and not "alter" in inputData["COMMAND"].lower() and not "drop" in inputData["COMMAND"].lower():
+                if not ";" in inputData["COMMAND"]:
+                    inputData["COMMAND"] += ";"
+                inputData["COMMAND"] = inputData["COMMAND"][:inputData["COMMAND"].index(";")]
                 myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
-                returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"]))
+                returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
                 myDataConnector.close()                
                 return str(returnData)
             return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
