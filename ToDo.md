@@ -1,8 +1,7 @@
 # todo list for data analysis of IHAB data
 
 ## OVD 
-1) Data impport: converter for Jules data to 1min feat chunk (matlab or python) and import into databank
-2) Feature Extraktor OVD based an Jules ideas (Python ML (scikit-learn) or transplant)
+1) Feature Extraktor OVD based an Jules ideas (Python ML (scikit-learn) or transplant)
 
 
 ## Feature Analyzer
@@ -27,8 +26,9 @@ Parameters:
 ### LEQ (a weighted (?))
 a-weighting is solved
 
-### RMS (a-weighted)
-a-weighting is solved
+### RMS (a-weighted) via PSD
+a-weighting as a new databank entry 
+
 
 ### searchable statistics (5% and 95% percentiles)
 
