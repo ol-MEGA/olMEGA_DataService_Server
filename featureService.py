@@ -16,9 +16,9 @@ class FeatureService():
     def __init__(self):
         self.ValidationPlugins = []
         self.FeaturePlugins = []
-        self.db = databaseConnector()
+        self.db = databaseConnector(readlOnly=False)
         query = "Select * FROM EMA_usergroup"
-        usergroups = self.db.execute_query(query)
+        usergroups = self.db.execute_query(query, {})
         for file in os.listdir("ValidationPlugins"):
             if file.endswith(".py"):
                 imported_module = __import__("ValidationPlugins.%s" % file.replace(".py", ""))
@@ -37,36 +37,36 @@ class FeatureService():
                                 self.FeaturePlugins.append(plugin)
                                 if plugin.storeAsFeatureFile == False:                                        
                                     query = 'SELECT * FROM EMA_Feature WHERE name like "%s"' % plugin.feature.lower()
-                                    Features = self.db.execute_query(query)
+                                    Features = self.db.execute_query(query, {})
                                     if len(Features) == 0:
                                         newFeatureId = str(uuid.uuid4())
                                         query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (newFeatureId, plugin.feature.lower(), plugin.description)
-                                        self.db.execute_query(query)
+                                        self.db.execute_query(query, {})
                                         for usergroup in usergroups:
                                             query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), newFeatureId, usergroup["id"], main.develServer, 0)
-                                            self.db.execute_query(query)
+                                            self.db.execute_query(query, {})
                                 elif plugin.storeAsFeatureFile == True:
                                     plugin.feature = plugin.feature.replace("_", "")
                                     query = 'SELECT * FROM EMA_filetype WHERE FileExtension = "%s"' % plugin.feature.lower()
-                                    FeatureFileTypes = self.db.execute_query(query)
+                                    FeatureFileTypes = self.db.execute_query(query, {})
                                     if len(FeatureFileTypes) == 0:
                                         FeatureFileTypesId = str(uuid.uuid4())
                                         query = 'INSERT INTO EMA_filetype (ID, FileExtension) VALUES ("%s", "%s")' % (FeatureFileTypesId, plugin.feature.lower())
-                                        self.db.execute_query(query)
+                                        self.db.execute_query(query, {})
                                     query = 'SELECT * FROM EMA_Feature WHERE name like "%s"' % plugin.feature.lower()
-                                    Features = self.db.execute_query(query)
+                                    Features = self.db.execute_query(query, {})
                                     if len(Features) == 0:
                                         FeatureId = str(uuid.uuid4())
                                         query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (FeatureId, plugin.feature.lower(), plugin.description)
-                                        self.db.execute_query(query)
+                                        self.db.execute_query(query, {})
                                     else:
                                         FeatureId = Features[0]["id"]
                                     query = 'SELECT count(ID) FROM EMA_authorization WHERE Feature_ID = "%s"' % (FeatureId)
-                                    Authorizations = self.db.execute_query(query)
+                                    Authorizations = self.db.execute_query(query, {})
                                     if Authorizations[0]["count(id)"] == 0:
                                         for usergroup in usergroups:
                                             query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), FeatureId, usergroup["id"], main.develServer, 0)
-                                            self.db.execute_query(query)
+                                            self.db.execute_query(query, {})
         self.db.connection.commit()
         
     def loadFeatureFileData(self, filenames):
@@ -124,26 +124,26 @@ class FeatureService():
     def removeFeature(self, featureName):
         if main.develServer:
             query = 'SELECT ID from EMA_Feature WHERE name like "%s"' % featureName.lower()
-            feature = self.db.execute_query(query)
+            feature = self.db.execute_query(query, {})
             if len(feature) > 0:
                 query = 'delete from EMA_authorization where Feature_ID = "%s"' % feature[0]["id"]
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 query = 'delete from EMA_featurevalue where Feature_ID = "%s"' % feature[0]["id"]
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 query = 'delete from EMA_feature where Name = "%s"' % featureName.lower()
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 self.db.connection.commit()
             query = 'SELECT ID from EMA_filetype WHERE FileExtension = "%s"' % featureName.lower().replace("_", "")
-            featurefile = self.db.execute_query(query)
+            featurefile = self.db.execute_query(query, {})
             if len(featurefile) > 0:
                 query = 'delete from EMA_authorization where Feature_ID = "%s"' % featurefile[0]["id"]
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 query = 'delete from EMA_file where FileType_ID = "%s"' % featurefile[0]["id"]
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 query = 'delete from EMA_filetype where ID = "%s"' % featurefile[0]["id"]
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 query = 'delete from EMA_feature where Name = "%s"' % featureName.lower()
-                self.db.execute_query(query)
+                self.db.execute_query(query, {})
                 self.db.connection.commit()
             files = glob.glob(os.path.join('FeatureFiles', '**', '%s*.feat' % (featureName.lower().replace("_", ""))), recursive=True)
             for f in files:
@@ -157,16 +157,16 @@ class FeatureService():
                     join EMA_feature on EMA_featurevalue.Feature_id = EMA_feature.ID \
                     WHERE EMA_feature.name = "%s" AND EMA_featurevalue.DataChunk_id = "%s" \
                     ORDER by EMA_featurevalue.Start' % (feature['name'].lower(), datachunkId)
-                temp = self.db.execute_query(query)
+                temp = self.db.execute_query(query, {})
                 if len(temp):
                     previousFeatures[feature['name'].lower()] = temp
             return previousFeatures
 
         limit = 500
         query = "SELECT * FROM EMA_Feature"
-        Features = self.db.execute_query(query)
+        Features = self.db.execute_query(query, {})
         query = "SELECT *, fileextension as name FROM EMA_filetype"
-        Filetypes = self.db.execute_query(query)
+        Filetypes = self.db.execute_query(query, {})
         
         for plugin in self.ValidationPlugins:
             currentPlugin = plugin()
@@ -190,13 +190,13 @@ class FeatureService():
                             query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_file.* FROM EMA_file \
                                 JOIN EMA_datachunk ON EMA_file.DataChunk_id = EMA_datachunk.ID \
                                 WHERE isValid = 0 AND FileType_Id = "%s" AND (EMA_datachunk.ID || EMA_file.ID) > "%s%s" ORDER BY (EMA_datachunk.ID || EMA_file.ID) LIMIT %d' % (feature["id"], lastDatachunkId, lastId, limit)
-                        data = self.db.execute_query(query)
+                        data = self.db.execute_query(query, {})
                         for item in data:
                             if item["datachunkid"] != lastDatachunkId:
                                 previousFeatures = getPreviousFeatures(Features, item["datachunkid"])
                                 query = 'SELECT * FROM EMA_file WHERE datachunk_id = "%s"' % item["datachunkid"]
                                 files = []
-                                for file in self.db.execute_query(query):
+                                for file in self.db.execute_query(query, {}):
                                     files.append(os.path.join("FeatureFiles", item["subject"], file["filename"]))
                                 previousFeatures = {**previousFeatures, **self.loadFeatureFileData(files)}
                                 lastDatachunkId = item["datachunkid"]
@@ -214,7 +214,7 @@ class FeatureService():
                         for idx in range(len(queryValueList)):
                             if (len(queryValueList[idx])) > 0:
                                 query = 'UPDATE %s SET isValid = %d, LastUpdate = "%s" WHERE %s' % (table, idx - 1, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), " or ".join(queryValueList[idx]))
-                                self.db.execute_query(query)
+                                self.db.execute_query(query, {})
                                 self.db.connection.commit()
                         print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         for plugin in self.FeaturePlugins:
@@ -234,7 +234,7 @@ class FeatureService():
                                 WHERE EMA_featurevalue.DataChunk_id = EMA_datachunk.ID AND EMA_feature.Name = "%s") = 0 \
                             AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > "%s" \
                             order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %d' % (plugin.feature.lower(), lastRow, limit)
-                        data = self.db.execute_query(query)
+                        data = self.db.execute_query(query, {})
                         if len(data):
                             files = []
                             lastItem = {"datachunkid": "", "subject": "", "filename": ""}
@@ -263,7 +263,7 @@ class FeatureService():
                         if len(queryValueList):
                             print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             query = 'INSERT INTO EMA_featurevalue (ID, DataChunk_Id, Feature_Id, Start, End, Side, Value, isValid, LastUpdate) VALUES ' + ','.join(queryValueList)
-                            self.db.execute_query(query)
+                            self.db.execute_query(query, {})
                 elif plugin.storeAsFeatureFile == True  and len([element for element in Filetypes if element['fileextension'] == plugin.feature.lower()]):
                     currentFiletypeId = [element for element in Filetypes if element['fileextension'] == plugin.feature.lower()][0]["id"]
                     data = None
@@ -278,7 +278,7 @@ class FeatureService():
                                 WHERE EMA_file.DataChunk_id = EMA_datachunk.ID AND EMA_filetype.FileExtension = "%s") = 0 \
                             AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > "%s" \
                             order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %d' % (plugin.feature.lower(), lastRow, limit)
-                        data = self.db.execute_query(query)
+                        data = self.db.execute_query(query, {})
                         start = time.time()
                         if len(data):
                             files = []
@@ -331,12 +331,12 @@ class FeatureService():
                         if len(queryFileList):
                             print("Duration for ", len(data), " Datarows: ", time.time() - start)
                             query = 'INSERT INTO EMA_File (ID, DataChunk_Id, FileType_Id, Filename, isValid, LastUpdate) VALUES ' + ','.join(queryFileList)
-                            self.db.execute_query(query)
+                            self.db.execute_query(query, {})
                     pass
             self.db.connection.commit()
 
 if __name__ == "__main__":
     featureService = FeatureService()
-    featureService.removeFeature("Coherence")
-    featureService.removeFeature("testFeature")
+    #featureService.removeFeature("Coherence")
+    #featureService.removeFeature("testFeature")
     featureService.run()
