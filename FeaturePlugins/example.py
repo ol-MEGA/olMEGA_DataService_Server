@@ -35,5 +35,5 @@ class Example:
             fs = 24000
             BlockTime = startTime.strftime('%Y%m%d_%H%M%S%f')[2:-3]
             values = numpy.zeros([Frames, 2])
-            return [{"start": startTime, "end": endTime, "value": values, "Frames": Frames, "Dim": Dim, "FrameSizeInSamples": FrameSizeInSamples, "HopSizeInSamples": HopSizeInSamples, "fs" : fs, "BlockTime": BlockTime, "isvalid": 1}]
+            return [{"start": startTime, "end": endTime, "value": values, "Frames": Frames, "Dim": Dim, "FrameSizeInSamples": FrameSizeInSamples, "HopSizeInSamples": HopSizeInSamples, "BlockTime": BlockTime, "isvalid": 1}]
         

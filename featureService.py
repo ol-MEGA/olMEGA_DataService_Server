@@ -6,7 +6,6 @@ import inspect
 import datetime
 from olMEGA_DataService_Server import FeatureFile
 from olMEGA_DataService_Server.dataConnectors import databaseConnector
-from random import randint
 import glob
 import time
 import configparser
@@ -243,11 +242,15 @@ class FeatureService():
                                         if values:
                                             if not type(values) is tuple:
                                                 values = tuple([values])
-                                            for idx in range(len(currentPlugin.feature)):
-                                                currentFeatureId = [element for element in Features if element['name'] == plugin.feature[idx].lower()][0]["id"]
-                                                for value in values[idx]:
-                                                    if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
-                                                        queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                            if len(currentPlugin.feature) == len(values):
+                                                for idx in range(len(currentPlugin.feature)):
+                                                    currentFeatureId = [element for element in Features if element['name'] == plugin.feature[idx].lower()][0]["id"]
+                                                    for value in values[idx]:
+                                                        if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
+                                                            queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                            elif not hasattr(currentPlugin, "warning_number_of_features_not_correct"):
+                                                currentPlugin.warning_number_of_features_not_correct = True
+                                                print("\33[31mWarning: Number of Features not equal return values in ", type(currentPlugin), "\33[0m")
                                     except Exception as e:
                                         if hasattr(e, 'message'):
                                             print(e.message)
@@ -296,32 +299,39 @@ class FeatureService():
                                             if values:
                                                 if not type(values) is tuple:
                                                     values = tuple([values])
-                                                for idx in range(len(currentPlugin.feature)):
-                                                    currentFiletypeId = [element for element in Filetypes if element['fileextension'] == currentPlugin.feature[idx].lower()][0]["id"]
-                                                    for value in values[idx]:
-                                                        if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
-                                                            filename = plugin.feature[idx].lower() + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
-                                                            if str(value["value"].dtype).startswith('complex'):
-                                                                temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
-                                                                temp[:, 0::2] = numpy.real(value["value"])
-                                                                temp[:, 1::2] = numpy.imag(value["value"])
-                                                                value["value"] = temp
-                                                            featureFile = FeatureFile.FeatureFile()
-                                                            featureFile.nFrames = value["value"].shape[0]
-                                                            featureFile.nDimensions = value["value"].shape[1]
-                                                            featureFile.FrameSizeInSamples = value["FrameSizeInSamples"]
-                                                            featureFile.HopSizeInSamples = value["HopSizeInSamples"]
-                                                            featureFile.mBlockTime = value["BlockTime"]
-                                                            featureFile.SystemTime = featureFile.mBlockTime
-                                                            featureFile.fs = featureFiles[0].fs
-                                                            featureFile.calibrationInDb = featureFiles[0].calibrationInDb.copy()
-                                                            featureFile.AndroidID = featureFiles[0].AndroidID
-                                                            featureFile.BluetoothTransmitterMAC = featureFiles[0].BluetoothTransmitterMAC
-                                                            if featureFiles[0].mBlockTime == featureFile.mBlockTime:
-                                                                featureFile.SystemTime = featureFiles[0].SystemTime
-                                                            featureFile.data = value["value"]
-                                                            FeatureFile.save(featureFile, os.path.join(self.config["MAIN"]["Storage"], lastItem["subject"], filename), True)
-                                                            queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                                if len(currentPlugin.feature) == len(values):
+                                                    for idx in range(len(currentPlugin.feature)):
+                                                        currentFiletypeId = [element for element in Filetypes if element['fileextension'] == currentPlugin.feature[idx].lower()][0]["id"]
+                                                        for value in values[idx]:
+                                                            if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
+                                                                if "fs" in value and not hasattr(currentPlugin, "warning_fs_is_deprecated"):
+                                                                    currentPlugin.warning_fs_is_deprecated = True
+                                                                    print("\33[31mWarning: Returning 'fs' is deprecated and will be ignored in", type(currentPlugin), "\33[0m")
+                                                                filename = plugin.feature[idx].lower() + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
+                                                                if str(value["value"].dtype).startswith('complex'):
+                                                                    temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
+                                                                    temp[:, 0::2] = numpy.real(value["value"])
+                                                                    temp[:, 1::2] = numpy.imag(value["value"])
+                                                                    value["value"] = temp
+                                                                featureFile = FeatureFile.FeatureFile()
+                                                                featureFile.nFrames = value["value"].shape[0]
+                                                                featureFile.nDimensions = value["value"].shape[1]
+                                                                featureFile.FrameSizeInSamples = value["FrameSizeInSamples"]
+                                                                featureFile.HopSizeInSamples = value["HopSizeInSamples"]
+                                                                featureFile.mBlockTime = value["BlockTime"]
+                                                                featureFile.SystemTime = featureFile.mBlockTime
+                                                                featureFile.fs = featureFiles[0].fs
+                                                                featureFile.calibrationInDb = featureFiles[0].calibrationInDb.copy()
+                                                                featureFile.AndroidID = featureFiles[0].AndroidID
+                                                                featureFile.BluetoothTransmitterMAC = featureFiles[0].BluetoothTransmitterMAC
+                                                                if featureFiles[0].mBlockTime == featureFile.mBlockTime:
+                                                                    featureFile.SystemTime = featureFiles[0].SystemTime
+                                                                featureFile.data = value["value"]
+                                                                FeatureFile.save(featureFile, os.path.join(self.config["MAIN"]["Storage"], lastItem["subject"], filename), True)
+                                                                queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                                elif not hasattr(currentPlugin, "warning_number_of_features_not_correct"):
+                                                    currentPlugin.warning_number_of_features_not_correct = True
+                                                    print("\33[31mWarning: Number of Features not equal return values for ", currentPlugin, "\33[0m")
                                     except Exception as e:
                                         if hasattr(e, 'message'):
                                             print("Error: ", e.message)
@@ -333,7 +343,7 @@ class FeatureService():
                                 lastItem = item
                                 files.append(os.path.join(self.config["MAIN"]["Storage"], item["subject"], item["filename"]))
                         if len(queryFileList):
-                            print("Duration for ", len(data), " Datarows: ", time.time() - start)
+                            print("Duration for ", len(data), " Datarows: \t", time.time() - start)
                             query = 'INSERT INTO EMA_File (ID, DataChunk_Id, FileType_Id, Filename, isValid, LastUpdate) VALUES ' + ','.join(queryFileList)
                             self.db.execute_query(query, {})
                     pass
