@@ -63,7 +63,7 @@ class SPL_A_Mean_60:
             while sliceStart < endTime:
                 data_block = rms_psd[counter*frames_per_block:(counter+1)*frames_per_block]
                 log_data_block = 10*np.log10(data_block)
-                cur_std = np.std(log_data_block)
+                cur_std = np.nanstd(log_data_block,)
                 cur_rms = 10*np.log10(np.mean(data_block))
                 counter += 1
                 sliceEnd = sliceStart + datetime.timedelta(seconds= min(60, self.timedelta))
