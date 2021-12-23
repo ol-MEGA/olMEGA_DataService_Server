@@ -165,8 +165,9 @@ class olMEGA_DataService_Server(object):
     def index(self):
         return render_template('index.html')
 
+    #https://139.13.133.80:5000/getDataset?data={%22TABLENAME%22:%22datachunk%22,%22CONDITIONS%22:{%22subject%22:%22NN07IS04%22}}
     @auth.login_required
-    def getDataset(self):
+    def     getDataset(self):
         try:
             if "downloadFileList" in session.keys():
                 del session["downloadFileList"]

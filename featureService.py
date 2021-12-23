@@ -1,13 +1,12 @@
 import os
 import uuid
-import sys
 import main
 import numpy
 import inspect
 import datetime
+from olMEGA_DataService_Server import FeatureFile
 from olMEGA_DataService_Server.dataConnectors import databaseConnector
 from random import randint
-import struct
 import glob
 import time
 
@@ -33,117 +32,102 @@ class FeatureService():
                 for name, module in inspect.getmembers(imported_module):
                     if not name.startswith("__"):
                         for name, plugin in inspect.getmembers(module):
-                            if not name.startswith("__") and hasattr(plugin, "feature") and hasattr(plugin, "description") and hasattr(plugin, "isActive"):
+                            if not plugin in self.FeaturePlugins and not name.startswith("__") and hasattr(plugin, "feature") and hasattr(plugin, "description") and hasattr(plugin, "isActive"):
+                                if type(plugin.feature) is str:
+                                    plugin.feature = [plugin.feature]
+                                    plugin.description = [plugin.description]
                                 self.FeaturePlugins.append(plugin)
                                 if plugin.storeAsFeatureFile == False:                                        
-                                    query = 'SELECT * FROM EMA_Feature WHERE name like "%s"' % plugin.feature.lower()
-                                    Features = self.db.execute_query(query, {})
-                                    if len(Features) == 0:
-                                        newFeatureId = str(uuid.uuid4())
-                                        query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (newFeatureId, plugin.feature.lower(), plugin.description)
-                                        self.db.execute_query(query, {})
-                                        for usergroup in usergroups:
-                                            query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), newFeatureId, usergroup["id"], main.develServer, 0)
-                                            self.db.execute_query(query, {})
+                                    for idx in range(len(plugin.feature)):
+                                        query = 'SELECT * FROM EMA_Feature WHERE name like %(feature)s'
+                                        Features = self.db.execute_query(query, {"feature": plugin.feature[idx].lower()})
+                                        if len(Features) == 0:
+                                            newFeatureId = str(uuid.uuid4())
+                                            query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES (%(ID)s, %(Name)s, %(Description)s)'
+                                            self.db.execute_query(query, {"ID": newFeatureId, "Name": plugin.feature[idx].lower(), "Description": plugin.description[idx]})
+                                            for usergroup in usergroups:
+                                                query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES (%(ID)s, %(Feature_ID)s, %(UserGroup_ID)s, %(AllowRead)s, %(AllowWrite)s)'
+                                                self.db.execute_query(query, {"ID": str(uuid.uuid4()), "Feature_ID": newFeatureId, "UserGroup_ID": usergroup["id"], "AllowRead": main.develServer, "AllowWrite": 0})
                                 elif plugin.storeAsFeatureFile == True:
-                                    plugin.feature = plugin.feature.replace("_", "")
-                                    query = 'SELECT * FROM EMA_filetype WHERE FileExtension = "%s"' % plugin.feature.lower()
-                                    FeatureFileTypes = self.db.execute_query(query, {})
-                                    if len(FeatureFileTypes) == 0:
-                                        FeatureFileTypesId = str(uuid.uuid4())
-                                        query = 'INSERT INTO EMA_filetype (ID, FileExtension) VALUES ("%s", "%s")' % (FeatureFileTypesId, plugin.feature.lower())
-                                        self.db.execute_query(query, {})
-                                    query = 'SELECT * FROM EMA_Feature WHERE name like "%s"' % plugin.feature.lower()
-                                    Features = self.db.execute_query(query, {})
-                                    if len(Features) == 0:
-                                        FeatureId = str(uuid.uuid4())
-                                        query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES ("%s", "%s", "%s")' % (FeatureId, plugin.feature.lower(), plugin.description)
-                                        self.db.execute_query(query, {})
-                                    else:
-                                        FeatureId = Features[0]["id"]
-                                    query = 'SELECT count(ID) FROM EMA_authorization WHERE Feature_ID = "%s"' % (FeatureId)
-                                    Authorizations = self.db.execute_query(query, {})
-                                    if Authorizations[0]["count(id)"] == 0:
-                                        for usergroup in usergroups:
-                                            query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES ("%s", "%s", "%s", %d, %d)' % (str(uuid.uuid4()), FeatureId, usergroup["id"], main.develServer, 0)
-                                            self.db.execute_query(query, {})
+                                    for idx in range(len(plugin.feature)):
+                                        plugin.feature[idx] = plugin.feature[idx].replace("_", "")
+                                        query = 'SELECT * FROM EMA_filetype WHERE FileExtension = %(FileExtension)s'
+                                        FeatureFileTypes = self.db.execute_query(query, {"FileExtension": plugin.feature[idx].lower()})
+                                        if len(FeatureFileTypes) == 0:
+                                            FeatureFileTypesId = str(uuid.uuid4())
+                                            query = 'INSERT INTO EMA_filetype (ID, FileExtension) VALUES (%(ID)s, %(FileExtension)s)'
+                                            self.db.execute_query(query, {"ID": FeatureFileTypesId, "FileExtension": plugin.feature[idx].lower()})
+                                        query = 'SELECT * FROM EMA_Feature WHERE name like %(name)s'
+                                        Features = self.db.execute_query(query, {"name": plugin.feature[idx].lower()})
+                                        if len(Features) == 0:
+                                            FeatureId = str(uuid.uuid4())
+                                            query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES (%(ID)s, %(Name)s, %(Description)s)'
+                                            self.db.execute_query(query, {"ID": FeatureId, "Name": plugin.feature[idx].lower(), "Description": plugin.description[idx]})
+                                        else:
+                                            FeatureId = Features[0]["id"]
+                                        query = 'SELECT count(ID) FROM EMA_authorization WHERE Feature_ID = %(Feature_ID)s'
+                                        Authorizations = self.db.execute_query(query, {"Feature_ID": FeatureId})
+                                        if Authorizations[0]["count(id)"] == 0:
+                                            for usergroup in usergroups:
+                                                query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES (%(ID)s, %(Feature_ID)s, %(UserGroup_ID)s, %(AllowRead)s, %(AllowWrite)s)'
+                                                self.db.execute_query(query, {"ID": str(uuid.uuid4()), "Feature_ID": FeatureId, "UserGroup_ID": usergroup["id"], "AllowRead": main.develServer, "AllowWrite": 0})
         self.db.connection.commit()
         
     def loadFeatureFileData(self, filenames):
         featureFileData = {}
+        featureFiles = []
         fs = None
         for file in filenames:
             fileNameParts = os.path.basename(file).split("_")
             if len(fileNameParts) > 1:
                 if os.path.isfile(file):
-                    with open(file, mode='rb') as filereader:
-                        data = filereader.read()
-                    vFrames = int.from_bytes(data[0:4], byteorder='big', signed=True)
-                    nDim = int.from_bytes(data[4:8], byteorder='big', signed=True)
-                    FrameSizeInSamples = int.from_bytes(data[8:12], byteorder='big', signed=True)
-                    HopSizeInSamples = int.from_bytes(data[12:16], byteorder='big', signed=True)
-                    fs = int.from_bytes(data[16:20], byteorder='big', signed=True)
-                    nBytesHeader = 36
-                    if len(fileNameParts) < 4:
-                        nBytesHeader = 29
-                    data = numpy.frombuffer(data, dtype='>f4', offset = nBytesHeader, count=-1).reshape([vFrames, nDim])[ :: , 2 :: ]
+                    featureFiles.append(FeatureFile.load(file))
+                    fs = featureFiles[-1].fs
                     hasDataModified = False
                     for plugin in self.FeaturePlugins:
-                        if plugin.feature.lower() == fileNameParts[0].lower():
-                            try:                                
-                                featureFileData[fileNameParts[0]] = plugin().modifieData(data)
-                                hasDataModified = True
-                            except Exception as e:
-                                if hasattr(e, 'message'):
-                                    print("Error: ", e.message)
-                                else:
-                                    print("Error: ", e)
-                                featureFileData[fileNameParts[0]] = data
-                            break;
+                        for idx in range(len(plugin.feature)):
+                            if plugin.feature[idx].lower() == fileNameParts[0].lower():
+                                try:                                
+                                    featureFileData[fileNameParts[0]] = plugin().modifieData(featureFiles[-1].data)
+                                    hasDataModified = True
+                                except Exception as e:
+                                    if hasattr(e, 'message'):
+                                        print("Error: ", e.message)
+                                    else:
+                                        print("Error: ", e)
+                                    featureFileData[fileNameParts[0]] = featureFiles[-1].data
+                                break
                     if hasDataModified == False:
-                        featureFileData[fileNameParts[0]] = data
-                    """
-                    if fileNameParts[0].lower()== "Coherence":
-                        featureFileData["Coherence"] = data[:, 1 : -1 : 2] + temp[:, 2 : -1 : 2] * 1j
-                    if fileNameParts[0].lower() == "psd":
-                        n = [int(data.shape[1] / 2), int(data.shape[1] / 4)]
-                        temp = data[:, 0 : n[0]]
-                        featureFileData["Pxy"] = temp[:, 1 : -1 : 2] + temp[:, 2 : -1 : 2] * 1j
-                        featureFileData["Pxx"] = data[:, n[0] + 1 : n[0] + n[1]]
-                        featureFileData["Pyy"] = data[:, n[0] + n[1] + 1 : ]                    
-                    else:
-                        featureFileData[fileNameParts[0]] = data
-                    """
+                        featureFileData[fileNameParts[0]] = featureFiles[-1].data
                 else:
                     pass
-                    #print (file)
         if fs != None:       
-            featureFileData["fs"] = fs
-        return featureFileData
+            featureFileData["fs"] = featureFiles[-1].fs
+        return featureFileData, featureFiles
     
     def removeFeature(self, featureName):
         if main.develServer:
-            query = 'SELECT ID from EMA_Feature WHERE name like "%s"' % featureName.lower()
-            feature = self.db.execute_query(query, {})
+            query = 'SELECT ID from EMA_Feature WHERE name like %(name)s'
+            feature = self.db.execute_query(query, {"name": featureName.lower()})
             if len(feature) > 0:
-                query = 'delete from EMA_authorization where Feature_ID = "%s"' % feature[0]["id"]
-                self.db.execute_query(query, {})
-                query = 'delete from EMA_featurevalue where Feature_ID = "%s"' % feature[0]["id"]
-                self.db.execute_query(query, {})
-                query = 'delete from EMA_feature where Name = "%s"' % featureName.lower()
-                self.db.execute_query(query, {})
+                query = 'delete from EMA_authorization where Feature_ID = %(Feature_ID)s'
+                self.db.execute_query(query, {"Feature_ID": feature[0]["id"]})
+                query = 'delete from EMA_featurevalue where Feature_ID = %(Feature_ID)s'
+                self.db.execute_query(query, {"Feature_ID": feature[0]["id"]})
+                query = 'delete from EMA_feature where Name = %(Name)s'
+                self.db.execute_query(query, {"Name": featureName.lower()})
                 self.db.connection.commit()
-            query = 'SELECT ID from EMA_filetype WHERE FileExtension = "%s"' % featureName.lower().replace("_", "")
-            featurefile = self.db.execute_query(query, {})
+            query = 'SELECT ID from EMA_filetype WHERE FileExtension = %(FileExtension)s'
+            featurefile = self.db.execute_query(query, {"FileExtension": featureName.lower().replace("_", "")})
             if len(featurefile) > 0:
-                query = 'delete from EMA_authorization where Feature_ID = "%s"' % featurefile[0]["id"]
-                self.db.execute_query(query, {})
-                query = 'delete from EMA_file where FileType_ID = "%s"' % featurefile[0]["id"]
-                self.db.execute_query(query, {})
-                query = 'delete from EMA_filetype where ID = "%s"' % featurefile[0]["id"]
-                self.db.execute_query(query, {})
-                query = 'delete from EMA_feature where Name = "%s"' % featureName.lower()
-                self.db.execute_query(query, {})
+                query = 'delete from EMA_authorization where Feature_ID = %(Feature_ID)s'
+                self.db.execute_query(query, {"Feature_ID": featurefile[0]["id"]})
+                query = 'delete from EMA_file where FileType_ID = %(FileType_ID)s'
+                self.db.execute_query(query, {"FileType_ID": featurefile[0]["id"]})
+                query = 'delete from EMA_filetype where ID = %(ID)s'
+                self.db.execute_query(query, {"ID": featurefile[0]["id"]})
+                query = 'delete from EMA_feature where Name = %(Name)s'
+                self.db.execute_query(query, {"Name": featureName.lower()})
                 self.db.connection.commit()
             files = glob.glob(os.path.join('FeatureFiles', '**', '%s*.feat' % (featureName.lower().replace("_", ""))), recursive=True)
             for f in files:
@@ -155,9 +139,9 @@ class FeatureService():
             for feature in Features:
                 query = 'SELECT EMA_featurevalue.Start as start, EMA_featurevalue.End as end, EMA_featurevalue.Side as Side, EMA_featurevalue.Value as value, EMA_featurevalue.isValid as isValid FROM EMA_featurevalue \
                     join EMA_feature on EMA_featurevalue.Feature_id = EMA_feature.ID \
-                    WHERE EMA_feature.name = "%s" AND EMA_featurevalue.DataChunk_id = "%s" \
-                    ORDER by EMA_featurevalue.Start' % (feature['name'].lower(), datachunkId)
-                temp = self.db.execute_query(query, {})
+                    WHERE EMA_feature.name = %(name)s AND EMA_featurevalue.DataChunk_id = %(DataChunk_id)s \
+                    ORDER by EMA_featurevalue.Start'
+                temp = self.db.execute_query(query, {"name": feature['name'].lower(), "DataChunk_id": datachunkId})
                 if len(temp):
                     previousFeatures[feature['name'].lower()] = temp
             return previousFeatures
@@ -185,25 +169,26 @@ class FeatureService():
                         if table == "EMA_featurevalue":
                             query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_featurevalue.* FROM EMA_featurevalue \
                                 JOIN EMA_datachunk ON EMA_featurevalue.DataChunk_id = EMA_datachunk.ID \
-                                WHERE isValid = 0 AND Feature_Id = "%s" AND (EMA_datachunk.ID || EMA_featurevalue.ID) > "%s%s" ORDER BY (EMA_datachunk.ID || EMA_featurevalue.ID) LIMIT %d' % (feature["id"], lastDatachunkId, lastId, limit)
+                                WHERE isValid = 0 AND Feature_Id = %(Feature_Id)s AND (EMA_datachunk.ID || EMA_featurevalue.ID) > %(IDs)s ORDER BY (EMA_datachunk.ID || EMA_featurevalue.ID) LIMIT %(limit)s'
                         elif table == "EMA_file":
                             query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_file.* FROM EMA_file \
                                 JOIN EMA_datachunk ON EMA_file.DataChunk_id = EMA_datachunk.ID \
-                                WHERE isValid = 0 AND FileType_Id = "%s" AND (EMA_datachunk.ID || EMA_file.ID) > "%s%s" ORDER BY (EMA_datachunk.ID || EMA_file.ID) LIMIT %d' % (feature["id"], lastDatachunkId, lastId, limit)
-                        data = self.db.execute_query(query, {})
+                                WHERE isValid = 0 AND FileType_Id = %(Feature_Id)s AND (EMA_datachunk.ID || EMA_file.ID) > %(IDs)s ORDER BY (EMA_datachunk.ID || EMA_file.ID) LIMIT %(limit)s'
+                        data = self.db.execute_query(query, {"Feature_Id": feature["id"], "IDs": lastDatachunkId + lastId, "limit": limit})
                         for item in data:
                             if item["datachunkid"] != lastDatachunkId:
                                 previousFeatures = getPreviousFeatures(Features, item["datachunkid"])
-                                query = 'SELECT * FROM EMA_file WHERE datachunk_id = "%s"' % item["datachunkid"]
+                                query = 'SELECT * FROM EMA_file WHERE datachunk_id = %(datachunk_id)s'
                                 files = []
-                                for file in self.db.execute_query(query, {}):
+                                for file in self.db.execute_query(query, {"datachunk_id": item["datachunkid"]}):
                                     files.append(os.path.join("FeatureFiles", item["subject"], file["filename"]))
-                                previousFeatures = {**previousFeatures, **self.loadFeatureFileData(files)}
+                                featureFileData, featureFiles = self.loadFeatureFileData(files)
+                                previousFeatures = {**previousFeatures, **featureFileData}
                                 lastDatachunkId = item["datachunkid"]
                             try:
                                 isValid = currentPlugin.process(feature["name"], item, previousFeatures)
                                 if isValid.value != item["isvalid"]:
-                                    queryValueList[isValid.value + 1].append('ID = "%s"' % (item["id"]))
+                                    queryValueList[isValid.value + 1].append(["ID=%(ID" + str(len(queryValueList[isValid.value + 1])) + ")s", {"ID" + str(len(queryValueList[isValid.value + 1])): item["id"]}])
                             except Exception as e:
                                 if hasattr(e, 'message'):
                                     print("Error: ", e.message)
@@ -213,28 +198,32 @@ class FeatureService():
                             
                         for idx in range(len(queryValueList)):
                             if (len(queryValueList[idx])) > 0:
-                                query = 'UPDATE %s SET isValid = %d, LastUpdate = "%s" WHERE %s' % (table, idx - 1, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), " or ".join(queryValueList[idx]))
-                                self.db.execute_query(query, {})
+                                query = ('UPDATE {} SET isValid = %(isValid)s, LastUpdate = %(LastUpdate)s WHERE ' + " or ".join([i[0] for i in queryValueList[idx]])).format(table)
+                                values = {"isValid": idx - 1, "LastUpdate": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+                                tmp = {values.update(i[1]) for i in queryValueList[idx]}
+                                self.db.execute_query(query, values)
                                 self.db.connection.commit()
                         print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         for plugin in self.FeaturePlugins:
             if plugin.isActive:
                 lastRow = ""
-                if plugin.storeAsFeatureFile == False and len([element for element in Features if element['name'] == plugin.feature.lower()]):
-                    currentFeatureId = [element for element in Features if element['name'] == plugin.feature.lower()][0]["id"]
+                if plugin.storeAsFeatureFile == False and len([element for element in Features if element['name'] in [x.lower() for x in plugin.feature]]):
                     data = None
                     while data is None or len(data) > 0:
                         self.db.resetTimer()
+                         
                         queryValueList = []
                         query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_file.Filename as Filename FROM EMA_file \
                             join EMA_datachunk on EMA_file.DataChunk_id = EMA_datachunk.ID \
                             WHERE \
                                 (SELECT count(EMA_featurevalue.ID) FROM EMA_featurevalue \
                                 JOIN EMA_feature ON EMA_featurevalue.Feature_id = EMA_feature.ID \
-                                WHERE EMA_featurevalue.DataChunk_id = EMA_datachunk.ID AND EMA_feature.Name = "%s") = 0 \
-                            AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > "%s" \
-                            order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %d' % (plugin.feature.lower(), lastRow, limit)
-                        data = self.db.execute_query(query, {})
+                                WHERE EMA_featurevalue.DataChunk_id = EMA_datachunk.ID AND EMA_feature.Name in (' + ",".join("%(Name" + str(x) + ")s" for x in range(len(plugin.feature))) + ')) = 0 \
+                            AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > %(ID)s \
+                            order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %(limit)s'
+                        values = {"Name" + str(idx): plugin.feature[idx].lower() for idx in range(len(plugin.feature))}
+                        values.update({"ID": lastRow, "limit": limit})
+                        data = self.db.execute_query(query, values)
                         if len(data):
                             files = []
                             lastItem = {"datachunkid": "", "subject": "", "filename": ""}
@@ -246,10 +235,16 @@ class FeatureService():
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
                                     previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
                                     try:
-                                        values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **self.loadFeatureFileData(files)})
-                                        for value in values:
-                                            if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
-                                                queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                        featureFileData, featureFiles = self.loadFeatureFileData(files)
+                                        values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
+                                        if values:
+                                            if not type(values) is tuple:
+                                                values = tuple([values])
+                                            for idx in range(len(currentPlugin.feature)):
+                                                currentFeatureId = [element for element in Features if element['name'] == plugin.feature[idx].lower()][0]["id"]
+                                                for value in values[idx]:
+                                                    if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
+                                                        queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                                     except Exception as e:
                                         if hasattr(e, 'message'):
                                             print(e.message)
@@ -264,8 +259,7 @@ class FeatureService():
                             print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             query = 'INSERT INTO EMA_featurevalue (ID, DataChunk_Id, Feature_Id, Start, End, Side, Value, isValid, LastUpdate) VALUES ' + ','.join(queryValueList)
                             self.db.execute_query(query, {})
-                elif plugin.storeAsFeatureFile == True  and len([element for element in Filetypes if element['fileextension'] == plugin.feature.lower()]):
-                    currentFiletypeId = [element for element in Filetypes if element['fileextension'] == plugin.feature.lower()][0]["id"]
+                elif plugin.storeAsFeatureFile == True  and len([element for element in Filetypes if element['fileextension'] in [x.lower() for x in plugin.feature]]):
                     data = None
                     while data is None or len(data) > 0:
                         self.db.resetTimer()
@@ -275,10 +269,12 @@ class FeatureService():
                             WHERE \
                                 (SELECT count(EMA_file.ID) FROM EMA_file \
                                 JOIN EMA_filetype ON EMA_file.FileType_id = EMA_filetype.ID \
-                                WHERE EMA_file.DataChunk_id = EMA_datachunk.ID AND EMA_filetype.FileExtension = "%s") = 0 \
-                            AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > "%s" \
-                            order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %d' % (plugin.feature.lower(), lastRow, limit)
-                        data = self.db.execute_query(query, {})
+                                WHERE EMA_file.DataChunk_id = EMA_datachunk.ID AND EMA_filetype.FileExtension in (' + ",".join("%(FileExtension" + str(x) + ")s" for x in range(len(plugin.feature))) + ')) = 0 \
+                            AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > %(ID)s \
+                            order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %(limit)s'
+                        values = {"FileExtension" + str(idx): plugin.feature[idx].lower() for idx in range(len(plugin.feature))}
+                        values.update({"ID": lastRow, "limit": limit})
+                        data = self.db.execute_query(query, values)
                         start = time.time()
                         if len(data):
                             files = []
@@ -291,33 +287,38 @@ class FeatureService():
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
                                     previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
                                     try:
-                                        values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **self.loadFeatureFileData(files)})
-                                        if values:
-                                            for value in values:
-                                                if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
-                                                    filename = plugin.feature.lower() + "_" + str(randint(100000, 999999)) + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
-                                                    if str(value["value"].dtype).startswith('complex'):
-                                                        temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
-                                                        temp[:, 0::2] = numpy.real(value["value"])
-                                                        temp[:, 1::2] = numpy.imag(value["value"])
-                                                        value["value"] = temp
-                                                    header = bytearray()
-                                                    header += value["value"].shape[0].to_bytes(4, "big")
-                                                    header += (value["value"].shape[1] + 2).to_bytes(4, "big")
-                                                    header += value["FrameSizeInSamples"].to_bytes(4, "big")
-                                                    header += value["HopSizeInSamples"].to_bytes(4, "big")
-                                                    header += value["fs"].to_bytes(4, "big")
-                                                    header += bytearray(value["BlockTime"], "utf-8")
-                                                    if len(header) != 36:
-                                                        print ("Warning: Header has wrong len, File not saved!")
-                                                    else:
-                                                        content = bytearray()
-                                                        for val in numpy.concatenate((numpy.zeros([value["value"].shape[0], 2]),  value["value"]), axis = 1).flatten():
-                                                            content += bytearray(struct.pack(">f", val))
-                                                        with open(os.path.join("FeatureFiles", lastItem["subject"], filename), mode='wb') as filewriter:
-                                                            filewriter.write(header)
-                                                            filewriter.write(content)
-                                                        queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                        featureFileData, featureFiles = self.loadFeatureFileData(files)
+                                        if len(featureFiles):
+                                            values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
+                                            if values:
+                                                if not type(values) is tuple:
+                                                    values = tuple([values])
+                                                for idx in range(len(currentPlugin.feature)):
+                                                    currentFiletypeId = [element for element in Filetypes if element['fileextension'] == currentPlugin.feature[idx].lower()][0]["id"]
+                                                    for value in values[idx]:
+                                                        if type(value) is dict and "value" in value and "start" in value and "end" in value and "isvalid" in value:
+                                                            filename = plugin.feature[idx].lower() + "_" + value["start"].strftime('%Y%m%d_%H%M%S%f')[:-3] + ".feat"
+                                                            if str(value["value"].dtype).startswith('complex'):
+                                                                temp = numpy.zeros([value["value"].shape[0], value["value"].shape[1] * 2])
+                                                                temp[:, 0::2] = numpy.real(value["value"])
+                                                                temp[:, 1::2] = numpy.imag(value["value"])
+                                                                value["value"] = temp
+                                                            featureFile = FeatureFile.FeatureFile()
+                                                            featureFile.nFrames = value["value"].shape[0]
+                                                            featureFile.nDimensions = value["value"].shape[1]
+                                                            featureFile.FrameSizeInSamples = value["FrameSizeInSamples"]
+                                                            featureFile.HopSizeInSamples = value["HopSizeInSamples"]
+                                                            featureFile.mBlockTime = value["BlockTime"]
+                                                            featureFile.SystemTime = featureFile.mBlockTime
+                                                            featureFile.fs = featureFiles[0].fs
+                                                            featureFile.calibrationInDb = featureFiles[0].calibrationInDb.copy()
+                                                            featureFile.AndroidID = featureFiles[0].AndroidID
+                                                            featureFile.BluetoothTransmitterMAC = featureFiles[0].BluetoothTransmitterMAC
+                                                            if featureFiles[0].mBlockTime == featureFile.mBlockTime:
+                                                                featureFile.SystemTime = featureFiles[0].SystemTime
+                                                            featureFile.data = value["value"]
+                                                            FeatureFile.save(featureFile, os.path.join("FeatureFiles", lastItem["subject"], filename), True)
+                                                            queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                                     except Exception as e:
                                         if hasattr(e, 'message'):
                                             print("Error: ", e.message)
@@ -339,4 +340,6 @@ if __name__ == "__main__":
     featureService = FeatureService()
     #featureService.removeFeature("Coherence")
     #featureService.removeFeature("testFeature")
+    #featureService.removeFeature("testFeature1")
+    #featureService.removeFeature("testFeature2")
     featureService.run()
