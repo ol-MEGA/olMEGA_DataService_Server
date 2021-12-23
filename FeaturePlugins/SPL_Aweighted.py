@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 class SPL_A_Mean_60:
     feature = 'SPL(A)_broadband_mean_60s'
     description = 'The mean (mu) of a full chunk A-weighted SPL value (computed by all 125ms SPL blocks)'
-    isActive = True
+    isActive = False
     storeAsFeatureFile = False # False: single Value stored in Database, True: Matrix stored in FeatureFile
     
     def __init__(self):

@@ -23,12 +23,10 @@ def dict_factory(cursor, row):
     return d
 
 class databaseConnector(object):
-    def __init__(self, timeout = 60 * 5, readlOnly = True):
+    def __init__(self, readlOnly = True):
         config = configparser.ConfigParser()
         config.read('settings.conf')
-
         self.db = config["DATABASE"]["Type"]
-        #self.db = "sqlite3"
         if self.db == "mySQL":
             host = config["DATABASE"]["Host"]
             user = config["DATABASE"]["User"]
@@ -49,7 +47,7 @@ class databaseConnector(object):
             self.cursor = self.connection.cursor()
         self.startTime = time.time()
         self.printQuery = config["DATABASE"]["PrintQuerys"] == 'True' or config["DATABASE"]["PrintQuerys"] == '1' or config["DATABASE"]["PrintQuerys"] == 1
-        self.timeout = timeout
+        self.timeout = int(config["DATABASE"]["Timeout"])
         
     def getDatabasePath(self):
         if os.path.isfile("../IhaWebServices/db.sqlite3"): 
@@ -99,10 +97,13 @@ class databaseConnector(object):
         pass
 
 class dataConnector(object):
-    def __init__(self, dataTables, forbiddenTables, UserRights, returnRawTable = False, timeout = 60 * 10, readlOnly = True):
-        self.FeatureFilesFolder = "FeatureFiles"
+    def __init__(self, dataTables, forbiddenTables = [], UserRights = [], returnRawTable = False, readlOnly = True):
+        import configparser
+        config = configparser.ConfigParser()
+        config.read('settings.conf')
+        self.FeatureFilesFolder = config["MAIN"]["Storage"]
         self.lastDataset = None
-        self.database = databaseConnector(timeout = timeout, readlOnly = readlOnly)
+        self.database = databaseConnector(readlOnly = readlOnly)
         self.dataTables = dataTables
         self.forbiddenTables = forbiddenTables
         self.returnRawTable = returnRawTable        

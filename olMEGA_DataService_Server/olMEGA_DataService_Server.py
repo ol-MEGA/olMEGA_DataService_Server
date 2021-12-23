@@ -59,7 +59,7 @@ class olMEGA_DataService_Server(object):
             for foreignKey in self.dataTables[table].foreignKeys:
                 self.dataTables[table].parentTables.append(self.dataTables[foreignKey[0][:-3].lower()])
                 self.dataTables[foreignKey[0][:-3].lower()].childTables.append(self.dataTables[table])
-        myDataConnector = dataConnector(self.dataTables, [], [], True)
+        myDataConnector = dataConnector(self.dataTables, returnRawTable = True)
         for table in self.dataTables:
             self.dataTables[table].createSQLs()
             loop = 0
@@ -128,7 +128,7 @@ class olMEGA_DataService_Server(object):
         if "UserRights" in session.keys() and "user" in session["UserRights"].keys() and session["UserRights"]["user"]["login"] == username and session["UserRights"]["user"]["password"] == hashlib.sha224(password.encode('utf-8')).hexdigest():
             return True
         else:
-            myDataConnector = dataConnector(self.dataTables, [], {}, True)
+            myDataConnector = dataConnector(self.dataTables, returnRawTable = True)
             session["UserRights"] = myDataConnector.getDataSet("usergroup", {"usergroup" : {"user" : {"login" : username, "password" : hashlib.sha224(password.encode('utf-8')).hexdigest()}}})
             myDataConnector.close()
             del myDataConnector
@@ -251,7 +251,7 @@ class olMEGA_DataService_Server(object):
                         zip_ref.extractall(outputFolder)
                     tempFile.close()
                 """
-                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], timeout = 60 * 10, readlOnly = False)
+                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], readlOnly = False)
                 data = json.loads(request.form["data"])
                 for id in data:
                     try:
@@ -325,7 +325,7 @@ class olMEGA_DataService_Server(object):
                 del session["downloadFileList"]
             returnData = True            
             if hasattr(request, 'form') and hasattr(request, 'files') and len(request.files) > 0:
-                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], timeout = 60 * 5, readlOnly = False)
+                myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"], readlOnly = False)
                 data = json.loads(request.form["data"])
                 for id in data:
                     try:

@@ -9,10 +9,13 @@ from olMEGA_DataService_Server.dataConnectors import databaseConnector
 from random import randint
 import glob
 import time
+import configparser
 
 class FeatureService():
 
     def __init__(self):
+        self.config = configparser.ConfigParser()
+        self.config.read('settings.conf')
         self.ValidationPlugins = []
         self.FeaturePlugins = []
         self.db = databaseConnector(readlOnly=False)
@@ -129,7 +132,7 @@ class FeatureService():
                 query = 'delete from EMA_feature where Name = %(Name)s'
                 self.db.execute_query(query, {"Name": featureName.lower()})
                 self.db.connection.commit()
-            files = glob.glob(os.path.join('FeatureFiles', '**', '%s*.feat' % (featureName.lower().replace("_", ""))), recursive=True)
+            files = glob.glob(os.path.join(self.config["MAIN"]["Storage"], '**', '%s*.feat' % (featureName.lower().replace("_", ""))), recursive=True)
             for f in files:
                 os.remove(f)                
 
@@ -181,7 +184,7 @@ class FeatureService():
                                 query = 'SELECT * FROM EMA_file WHERE datachunk_id = %(datachunk_id)s'
                                 files = []
                                 for file in self.db.execute_query(query, {"datachunk_id": item["datachunkid"]}):
-                                    files.append(os.path.join("FeatureFiles", item["subject"], file["filename"]))
+                                    files.append(os.path.join(self.config["MAIN"]["Storage"], item["subject"], file["filename"]))
                                 featureFileData, featureFiles = self.loadFeatureFileData(files)
                                 previousFeatures = {**previousFeatures, **featureFileData}
                                 lastDatachunkId = item["datachunkid"]
@@ -254,7 +257,7 @@ class FeatureService():
                                 if item["subject"] != lastItem["subject"]:
                                     currentPlugin = plugin()
                                 lastItem = item
-                                files.append(os.path.join("FeatureFiles", item["subject"], item["filename"]))
+                                files.append(os.path.join(self.config["MAIN"]["Storage"], item["subject"], item["filename"]))
                         if len(queryValueList):
                             print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                             query = 'INSERT INTO EMA_featurevalue (ID, DataChunk_Id, Feature_Id, Start, End, Side, Value, isValid, LastUpdate) VALUES ' + ','.join(queryValueList)
@@ -317,7 +320,7 @@ class FeatureService():
                                                             if featureFiles[0].mBlockTime == featureFile.mBlockTime:
                                                                 featureFile.SystemTime = featureFiles[0].SystemTime
                                                             featureFile.data = value["value"]
-                                                            FeatureFile.save(featureFile, os.path.join("FeatureFiles", lastItem["subject"], filename), True)
+                                                            FeatureFile.save(featureFile, os.path.join(self.config["MAIN"]["Storage"], lastItem["subject"], filename), True)
                                                             queryFileList.append('("%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFiletypeId, filename, value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
                                     except Exception as e:
                                         if hasattr(e, 'message'):
@@ -328,7 +331,7 @@ class FeatureService():
                                 if item["subject"] != lastItem["subject"]:
                                     currentPlugin = plugin()
                                 lastItem = item
-                                files.append(os.path.join("FeatureFiles", item["subject"], item["filename"]))
+                                files.append(os.path.join(self.config["MAIN"]["Storage"], item["subject"], item["filename"]))
                         if len(queryFileList):
                             print("Duration for ", len(data), " Datarows: ", time.time() - start)
                             query = 'INSERT INTO EMA_File (ID, DataChunk_Id, FileType_Id, Filename, isValid, LastUpdate) VALUES ' + ','.join(queryFileList)
