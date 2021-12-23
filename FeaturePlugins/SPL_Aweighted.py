@@ -12,9 +12,9 @@ import FeaturePlugins.acousticweighting as aw
 import matplotlib.pyplot as plt
 
 class SPL_A_Mean_60:
-    feature = 'SPL(A)_broadband_mean_60s'
-    description = 'The mean (mu) of a full chunk A-weighted SPL value (computed by all 125ms SPL blocks)'
-    isActive = False
+    feature = ['SPL(A)_broadband_mean_10s', 'SPL(A)_broadband_stddev_10s']
+    description = ['The mean (mu) of 10s A-weighted SPL value (computed by all 125ms SPL blocks)', 'The Standard Deviation (sigma) of 10s A-weighted SPL value (Attention in dB) (computed by all 125ms SPL blocks)']
+    isActive = True
     storeAsFeatureFile = False # False: single Value stored in Database, True: Matrix stored in FeatureFile
     
     def __init__(self):
@@ -37,13 +37,12 @@ class SPL_A_Mean_60:
             Pxx = PSD['Pxx']
             Pyy = PSD['Pyy']
             nr_of_frames, fft_size = Pxx.shape
-            RMS = existingFeatures['RMS']
             w,f = aw.get_fftweight_vector((fft_size-1)*2,fs,'a','lin')
-            
-            meanPSD = (((Pxx)*fs)*w)*0.25 # this works because of broadcasting rules in python
+            meanPSD = (((Pxx+Pyy)*0.5*fs)*w)*0.25 # this works because of broadcasting rules in python
             rms_psd = np.mean((meanPSD), axis=1) # mean over frequency
             
             # just debug
+            #RMS = existingFeatures['RMS']
             #print(10*np.log10(np.mean(rms_psd)))
             #print(20*np.log10(np.mean(RMS[:,0])))
 
@@ -54,45 +53,22 @@ class SPL_A_Mean_60:
             #plt.show()
             
             
-            values = []
+            values_mean = []
+            values_std = []
+            
             sliceStart = startTime
             counter = int(0)
             frames_per_block = int(nr_of_frames/self.nr_of_blocks)
             
             while sliceStart < endTime:
-                cur_rms = 10*np.log10(np.mean(rms_psd[counter*frames_per_block:(counter+1)*frames_per_block]))
+                data_block = rms_psd[counter*frames_per_block:(counter+1)*frames_per_block]
+                log_data_block = 10*np.log10(data_block)
+                cur_std = np.std(log_data_block)
+                cur_rms = 10*np.log10(np.mean(data_block))
                 counter += 1
                 sliceEnd = sliceStart + datetime.timedelta(seconds= min(60, self.timedelta))
-                values.append({"start": sliceStart, "end": sliceEnd, "side": "B", "value": cur_rms, "isvalid": 1})
+                values_mean.append({"start": sliceStart, "end": sliceEnd, "side": "B", "value": cur_rms, "isvalid": 1})
+                values_std.append({"start": sliceStart, "end": sliceEnd, "side": "B", "value": cur_std, "isvalid": 1})
                 sliceStart = sliceEnd
-            return values
+            return values_mean, values_std
 
-class SPL_A_StandardDev_60:
- 
-    feature = 'SPL(A)_broadband_Standarddev_60s'
-    description = 'The standard deviation (sigma) of a full chunk A-weighted SPL value (computed by all 125ms SPL blocks)'
-    isActive = False
-    storeAsFeatureFile = False # False: single Value stored in Database, True: Matrix stored in FeatureFile
-    
-    def __init__(self):
-        self.timedelta = 60 # in seconds (max: 60)
-        if (self.timedelta >= 60):
-            self.timedelta = 60
-        
-        pass
-    
-    def modifieData(self, data):
-        returnData = data
-        return returnData
-    
-    def process(self, startTime, endTime, existingFeatures):
-        if self.storeAsFeatureFile == False:
-            ## Example for Value in Database
-            values = []
-            sliceStart = startTime
-            while sliceStart < endTime:
-                sliceEnd = sliceStart + datetime.timedelta(seconds= min(60, self.timedelta))
-                values.append({"start": sliceStart, "end": sliceEnd, "side": "B", "value": 0, "isvalid": 1})
-                sliceStart = sliceEnd
-            return values
-        

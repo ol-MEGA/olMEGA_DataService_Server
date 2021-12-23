@@ -5,7 +5,7 @@ class Example_Multi:
     
     feature = ['testFeature1', 'testFeature2']
     description = ['Demo Feature 1 for testing...', 'Demo Feature 2 for testing...']
-    isActive = True
+    isActive = False
     storeAsFeatureFile = True # False: single Value stored in Database, True: Matrix stored in FeatureFile
     
     def __init__(self):
