@@ -89,8 +89,11 @@ class FeatureService():
                     for plugin in self.FeaturePlugins:
                         for idx in range(len(plugin.feature)):
                             if plugin.feature[idx].lower() == fileNameParts[0].lower():
-                                try:                                
-                                    featureFileData[fileNameParts[0]] = plugin().modifieData(featureFiles[-1].data)
+                                try:       
+                                    if "modifieData" in plugin.__dict__:                         
+                                        featureFileData[fileNameParts[0]] = plugin().modifieData(featureFiles[-1].data)
+                                    else:
+                                        featureFileData[fileNameParts[0]] = featureFiles[-1].data
                                     hasDataModified = True
                                 except Exception as e:
                                     if hasattr(e, 'message'):
