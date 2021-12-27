@@ -1,5 +1,5 @@
 """
-PLugIn to compute the a weighted RMS of OlMEGA Data. The results are the mean (linear mean of all values) in dB and
+Feature PLugIn (FPI) to compute the a weighted RMS of OlMEGA Data. The results are the mean (linear mean of all values) in dB and
 the standard deviation of the dB values für each 125ms block.
 """
 
