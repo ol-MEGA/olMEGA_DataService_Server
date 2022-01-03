@@ -79,21 +79,21 @@ class dBTable(object):
                 values = [["=", value]]
             tmpConditions = []
             for tmpValue in values:
-                if tmpValue[1].startswith(">="):
+                if tmpValue[0].startswith(">="):
                     tmpValue[0] = ">="
-                    tmpValue[1] = tmpValue[1][2:]
-                elif tmpValue[1].startswith("<="):
+                    tmpValue[1] = tmpValue[1]
+                elif tmpValue[0].startswith("<="):
                     tmpValue[0] = "<="
-                    tmpValue[1] = tmpValue[1][2:]
-                elif tmpValue[1].startswith(">"):
+                    tmpValue[1] = tmpValue[1]
+                elif tmpValue[0].startswith(">"):
                     tmpValue[0] = ">"
-                    tmpValue[1] = tmpValue[1][1:]
-                elif tmpValue[1].startswith("<"):
+                    tmpValue[1] = tmpValue[1]
+                elif tmpValue[0].startswith("<"):
                     tmpValue[0] = "<"
-                    tmpValue[1] = tmpValue[1][1:]
-                elif tmpValue[1].startswith("!="):
+                    tmpValue[1] = tmpValue[1]
+                elif tmpValue[0].startswith("!="):
                     tmpValue[0] = "<>"
-                    tmpValue[1] = tmpValue[1][2:]
+                    tmpValue[1] = tmpValue[1]
                 else:
                     tmpValue[0] = "="
                 if field == "id" and len(str(tmpValue[1])) > 0 and str(tmpValue[1])[0] == "[":

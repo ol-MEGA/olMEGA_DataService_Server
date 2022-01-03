@@ -41,11 +41,11 @@ class FeatureService():
                                 self.FeaturePlugins.append(plugin)
                                 if plugin.storeAsFeatureFile == False:                                        
                                     for idx in range(len(plugin.feature)):
-                                        query = 'SELECT * FROM EMA_Feature WHERE name like %(feature)s'
+                                        query = 'SELECT * FROM EMA_feature WHERE name like %(feature)s'
                                         Features = self.db.execute_query(query, {"feature": plugin.feature[idx].lower()})
                                         if len(Features) == 0:
                                             newFeatureId = str(uuid.uuid4())
-                                            query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES (%(ID)s, %(Name)s, %(Description)s)'
+                                            query = 'INSERT INTO EMA_feature (ID, Name, Description) VALUES (%(ID)s, %(Name)s, %(Description)s)'
                                             self.db.execute_query(query, {"ID": newFeatureId, "Name": plugin.feature[idx].lower(), "Description": plugin.description[idx]})
                                             for usergroup in usergroups:
                                                 query = 'INSERT INTO EMA_authorization (ID, Feature_ID, UserGroup_ID, AllowRead, AllowWrite) VALUES (%(ID)s, %(Feature_ID)s, %(UserGroup_ID)s, %(AllowRead)s, %(AllowWrite)s)'
@@ -59,11 +59,11 @@ class FeatureService():
                                             FeatureFileTypesId = str(uuid.uuid4())
                                             query = 'INSERT INTO EMA_filetype (ID, FileExtension) VALUES (%(ID)s, %(FileExtension)s)'
                                             self.db.execute_query(query, {"ID": FeatureFileTypesId, "FileExtension": plugin.feature[idx].lower()})
-                                        query = 'SELECT * FROM EMA_Feature WHERE name like %(name)s'
+                                        query = 'SELECT * FROM EMA_feature WHERE name like %(name)s'
                                         Features = self.db.execute_query(query, {"name": plugin.feature[idx].lower()})
                                         if len(Features) == 0:
                                             FeatureId = str(uuid.uuid4())
-                                            query = 'INSERT INTO EMA_Feature (ID, Name, Description) VALUES (%(ID)s, %(Name)s, %(Description)s)'
+                                            query = 'INSERT INTO EMA_feature (ID, Name, Description) VALUES (%(ID)s, %(Name)s, %(Description)s)'
                                             self.db.execute_query(query, {"ID": FeatureId, "Name": plugin.feature[idx].lower(), "Description": plugin.description[idx]})
                                         else:
                                             FeatureId = Features[0]["id"]
@@ -112,7 +112,7 @@ class FeatureService():
     
     def removeFeature(self, featureName):
         if main.develServer:
-            query = 'SELECT ID from EMA_Feature WHERE name like %(name)s'
+            query = 'SELECT ID from EMA_feature WHERE name like %(name)s'
             feature = self.db.execute_query(query, {"name": featureName.lower()})
             if len(feature) > 0:
                 query = 'delete from EMA_authorization where Feature_ID = %(Feature_ID)s'
@@ -152,7 +152,7 @@ class FeatureService():
             return previousFeatures
 
         limit = 500
-        query = "SELECT * FROM EMA_Feature"
+        query = "SELECT * FROM EMA_feature"
         Features = self.db.execute_query(query, {})
         query = "SELECT *, fileextension as name FROM EMA_filetype"
         Filetypes = self.db.execute_query(query, {})
