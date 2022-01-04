@@ -70,9 +70,9 @@ class SPL_A_Mean_60:
                 mean_data_block = np.mean(data_block)
                 # data extension for non possible values
                 data_block[data_block == 0] = mean_data_block
-                log_data_block = 10*np.log10(data_block)
+                log_data_block = 10*np.log10(data_block + np.finfo(float).eps)
                 cur_std = np.nanstd(log_data_block,)
-                cur_rms = 10*np.log10(mean_data_block)
+                cur_rms = 10*np.log10(mean_data_block + np.finfo(float).eps)
                 counter += 1
                 sliceEnd = sliceStart + datetime.timedelta(seconds= min(60, self.timedelta))
                 values_mean.append({"start": sliceStart, "end": sliceEnd, "side": "B", "value": cur_rms, "isvalid": 1})

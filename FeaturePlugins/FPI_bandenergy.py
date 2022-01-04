@@ -45,7 +45,7 @@ class SPL_A_Mean_60:
             mu_Pyy = np.mean(Pyy, axis = 0)
             band_energL = (mu_Pxx@weight_mat)
             band_energR = (mu_Pyy@weight_mat)
-            band_energ = 10*np.log10(0.5*(band_energL +band_energR))
+            band_energ = 10*np.log10(0.5*(band_energL +band_energR) + np.finfo(float).eps)
                         
             # just debug
             #RMS = existingFeatures['RMS']
