@@ -174,11 +174,19 @@ class FeatureService():
                         if table == "EMA_featurevalue":
                             query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_featurevalue.* FROM EMA_featurevalue \
                                 JOIN EMA_datachunk ON EMA_featurevalue.DataChunk_id = EMA_datachunk.ID \
-                                WHERE isValid = 0 AND Feature_Id = %(Feature_Id)s AND (EMA_datachunk.ID || EMA_featurevalue.ID) > %(IDs)s ORDER BY (EMA_datachunk.ID || EMA_featurevalue.ID) LIMIT %(limit)s'
+                                WHERE isValid = 0 AND Feature_Id = %(Feature_Id)s '
+                            if self.db.db == "mySQL":
+                                query += 'AND (CONCAT(EMA_datachunk.ID, EMA_featurevalue.ID)) > %(IDs)s ORDER BY (CONCAT(EMA_datachunk.ID, EMA_featurevalue.ID)) LIMIT %(limit)s'
+                            else:
+                                query += 'AND (EMA_datachunk.ID || EMA_featurevalue.ID) > %(IDs)s ORDER BY (EMA_datachunk.ID || EMA_featurevalue.ID) LIMIT %(limit)s'
                         elif table == "EMA_file":
                             query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_file.* FROM EMA_file \
                                 JOIN EMA_datachunk ON EMA_file.DataChunk_id = EMA_datachunk.ID \
-                                WHERE isValid = 0 AND FileType_Id = %(Feature_Id)s AND (EMA_datachunk.ID || EMA_file.ID) > %(IDs)s ORDER BY (EMA_datachunk.ID || EMA_file.ID) LIMIT %(limit)s'
+                                WHERE isValid = 0 AND FileType_Id = %(Feature_Id)s '
+                            if self.db.db == "mySQL":
+                                query += 'AND (CONCAT(EMA_datachunk.ID, EMA_file.ID)) > %(IDs)s ORDER BY (CONCAT(EMA_datachunk.ID, EMA_file.ID)) LIMIT %(limit)s'
+                            else:
+                                query += 'AND (EMA_datachunk.ID || EMA_file.ID) > %(IDs)s ORDER BY (EMA_datachunk.ID || EMA_file.ID) LIMIT %(limit)s'
                         data = self.db.execute_query(query, {"Feature_Id": feature["id"], "IDs": lastDatachunkId + lastId, "limit": limit})
                         for item in data:
                             if item["datachunkid"] != lastDatachunkId:
@@ -223,8 +231,12 @@ class FeatureService():
                             WHERE \
                                 (SELECT count(EMA_featurevalue.ID) FROM EMA_featurevalue \
                                 JOIN EMA_feature ON EMA_featurevalue.Feature_id = EMA_feature.ID \
-                                WHERE EMA_featurevalue.DataChunk_id = EMA_datachunk.ID AND EMA_feature.Name in (' + ",".join("%(Name" + str(x) + ")s" for x in range(len(plugin.feature))) + ')) = 0 \
-                            AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > %(ID)s \
+                                WHERE EMA_featurevalue.DataChunk_id = EMA_datachunk.ID AND EMA_feature.Name in (' + ",".join("%(Name" + str(x) + ")s" for x in range(len(plugin.feature))) + ')) = 0 '
+                        if self.db.db == "mySQL":
+                            query += 'AND CONCAT(EMA_datachunk.subject, EMA_datachunk.start, EMA_datachunk.ID) > %(ID)s \
+                            order by CONCAT(EMA_datachunk.subject, EMA_datachunk.start, EMA_datachunk.ID) LIMIT %(limit)s'
+                        else:
+                            query += 'AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > %(ID)s \
                             order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %(limit)s'
                         values = {"Name" + str(idx): plugin.feature[idx].lower() for idx in range(len(plugin.feature))}
                         values.update({"ID": lastRow, "limit": limit})
@@ -236,12 +248,12 @@ class FeatureService():
                                 data.append(lastItem.copy())
                             for item in data:
                                 if "start" in item:
-                                    lastRow = item["subject"] + item["start"] + item["datachunkid"]
+                                    lastRow = item["subject"] + str(item["start"]) + item["datachunkid"]
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
                                     previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
                                     try:
                                         featureFileData, featureFiles = self.loadFeatureFileData(files)
-                                        values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
+                                        values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
                                         if values:
                                             if not type(values) is tuple:
                                                 values = tuple([values])
@@ -273,13 +285,17 @@ class FeatureService():
                     while data is None or len(data) > 0:
                         self.db.resetTimer()
                         queryFileList = []
-                        query= 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_file.Filename as Filename FROM EMA_file \
+                        query = 'SELECT EMA_datachunk.ID as datachunkID, EMA_datachunk.subject as subject, EMA_datachunk.start as start, EMA_datachunk.end as end, EMA_file.Filename as Filename FROM EMA_file \
                             join EMA_datachunk on EMA_file.DataChunk_id = EMA_datachunk.ID \
                             WHERE \
                                 (SELECT count(EMA_file.ID) FROM EMA_file \
                                 JOIN EMA_filetype ON EMA_file.FileType_id = EMA_filetype.ID \
-                                WHERE EMA_file.DataChunk_id = EMA_datachunk.ID AND EMA_filetype.FileExtension in (' + ",".join("%(FileExtension" + str(x) + ")s" for x in range(len(plugin.feature))) + ')) = 0 \
-                            AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > %(ID)s \
+                                WHERE EMA_file.DataChunk_id = EMA_datachunk.ID AND EMA_filetype.FileExtension in (' + ",".join("%(FileExtension" + str(x) + ")s" for x in range(len(plugin.feature))) + ')) = 0 '
+                        if self.db.db == "mySQL":
+                            query += 'AND CONCAT(EMA_datachunk.subject, EMA_datachunk.start, EMA_datachunk.ID) > %(ID)s \
+                            order by CONCAT(EMA_datachunk.subject, EMA_datachunk.start, EMA_datachunk.ID) LIMIT %(limit)s'
+                        else:
+                            query += 'AND EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID > %(ID)s \
                             order by EMA_datachunk.subject || EMA_datachunk.start || EMA_datachunk.ID LIMIT %(limit)s'
                         values = {"FileExtension" + str(idx): plugin.feature[idx].lower() for idx in range(len(plugin.feature))}
                         values.update({"ID": lastRow, "limit": limit})
@@ -291,14 +307,14 @@ class FeatureService():
                             if len(data) < limit:
                                 data.append(lastItem.copy())
                             for item in data:
-                                if "start" in item:
-                                    lastRow = item["subject"] + item["start"] + item["datachunkid"]
+                                if "start" in item: 
+                                    lastRow = item["subject"] + str(item["start"]) + item["datachunkid"]
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
                                     previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
                                     try:
                                         featureFileData, featureFiles = self.loadFeatureFileData(files)
                                         if len(featureFiles):
-                                            values = currentPlugin.process(datetime.datetime.strptime(lastItem["start"], '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(lastItem["end"], '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
+                                            values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
                                             if values:
                                                 if not type(values) is tuple:
                                                     values = tuple([values])
@@ -347,7 +363,7 @@ class FeatureService():
                                 files.append(os.path.join(self.config["MAIN"]["Storage"], item["subject"], item["filename"]))
                         if len(queryFileList):
                             print("Duration for ", len(data), " Datarows: \t", time.time() - start)
-                            query = 'INSERT INTO EMA_File (ID, DataChunk_Id, FileType_Id, Filename, isValid, LastUpdate) VALUES ' + ','.join(queryFileList)
+                            query = 'INSERT INTO EMA_file (ID, DataChunk_Id, FileType_Id, Filename, isValid, LastUpdate) VALUES ' + ','.join(queryFileList)
                             self.db.execute_query(query, {})
                     pass
             self.db.connection.commit()

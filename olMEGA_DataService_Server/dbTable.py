@@ -339,8 +339,9 @@ class dBTable(object):
                                 newRow[parent.name + "_id"] = self.parentTable[0]["id"]
                             elif len(self.parentTable) == 0:
                                 self.strSql_old = ""
-                                values = {self.prefix + parent.name + "_" + item : newRow[item] for item in fields + [parent.name + "_id"]}
                                 newRow[parent.name + "_id"] = str(uuid.uuid4())                                    
+                                values = {self.prefix + parent.name + "_" + item : newRow[item] for item in fields}
+                                values.update({self.prefix + parent.name + "_" + parent.name + "_id": newRow[parent.name + "_id"]})
                                 strSql = "INSERT INTO " + self.prefix + parent.name + " (" + ", ".join(fields + ["id"]) + ") VALUES (" + ", ".join(["%(" + self.prefix + parent.name + "_" + item +")s" for item in fields + [parent.name + "_id"]]) + ");"
                                 #database.tempQuery += strSql
                                 database.execute_query(strSql, values)

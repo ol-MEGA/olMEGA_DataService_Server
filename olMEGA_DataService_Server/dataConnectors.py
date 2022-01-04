@@ -79,16 +79,16 @@ class databaseConnector(object):
         self.cursor.execute(query, values)
         if self.db == "mySQL" and self.printQuery:
             print(self.cursor._executed)
-        if self.db == "mySQL":
-            pass
-        elif self.db == "sqlite3":
-            self.connection.commit()
         if query.lower().startswith("select ") or query.lower().startswith("show ") or query.lower().startswith("pragma "):
             data = self.cursor.fetchall()
             if type(data) is list:
                 for idx in range(len(data)):
                     data[idx] = {k.lower(): v for k, v in data[idx].items()} 
             return data
+        elif self.db == "mySQL":
+            self.connection.commit()
+        elif self.db == "sqlite3":
+            self.connection.commit()
     
     def close(self):
         if (self.db == "mySQL" and self.connection.is_connected()) or self.db == "sqlite3":
