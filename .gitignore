@@ -11,3 +11,4 @@ settings.json
 *.pyc
 settings.conf
 .vscode/launch.json
+settings.conf
