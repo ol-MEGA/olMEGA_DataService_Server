@@ -385,6 +385,7 @@ class olMEGA_DataService_Server(object):
     @auth.login_required
     def executeQuery(self):
         try:
+            returnData = []
             if request.is_json:
                 inputData = request.get_json()
                 if "COMMAND" in inputData and type(inputData["COMMAND"]) is str: 
@@ -396,7 +397,7 @@ class olMEGA_DataService_Server(object):
                         myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
                         returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
                         myDataConnector.close()                
-                        return str(returnData)
+            return str(returnData)
         except Exception as e:
             return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
     """            
