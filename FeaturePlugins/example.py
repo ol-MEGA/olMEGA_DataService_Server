@@ -5,7 +5,7 @@ class Example:
     
     feature = 'testFeature'
     description = 'Demo Feature for testing...'
-    isActive = True
+    isActive = False
     storeAsFeatureFile = True # False: single Value stored in Database, True: Matrix stored in FeatureFile
     
     def __init__(self):
