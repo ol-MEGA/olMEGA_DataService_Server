@@ -332,9 +332,10 @@ class dBTable(object):
                         if not callingTableName == parent.name and len(fields):
                             values = {self.prefix + parent.name + "_" + item : newRow[item] for item in fields}
                             strSql = "SELECT DISTINCT id FROM " + self.prefix + parent.name + " WHERE " + " AND ".join([item + " = %(" + self.prefix + parent.name + "_" + item + ")s" for item in fields])
-                            if not hasattr(self, "strSql_old") or self.strSql_old != strSql:
+                            if not hasattr(self, "strSql_old") or self.strSql_old != strSql or self.values_old != values:
                                 self.parentTable = database.execute_query(strSql, values)
                                 self.strSql_old = strSql
+                                self.values_old = values
                             if len(self.parentTable) == 1:
                                 newRow[parent.name + "_id"] = self.parentTable[0]["id"]
                             elif len(self.parentTable) == 0:
