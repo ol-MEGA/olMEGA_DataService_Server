@@ -32,9 +32,10 @@ class databaseConnector(object):
             user = config["DATABASE"]["User"]
             passwd = config["DATABASE"]["Passwd"]
             database = config["DATABASE"]["Database"]
+            port = int(config["DATABASE"].get("Port", 3306))
             if readlOnly:
                 user += "_readonly"
-            self.connection = mysql.connect(host = host, user = user, passwd = passwd, database = database)
+            self.connection = mysql.connect(host = host, user = user, passwd = passwd, database = database, port=port)
             self.cursor = self.connection.cursor(dictionary=True, buffered=False)
         elif self.db == "sqlite3":
             if str(self.getDatabasePath()) == "":

@@ -38,6 +38,10 @@ class FeatureService():
                                 if type(plugin.feature) is str:
                                     plugin.feature = [plugin.feature]
                                     plugin.description = [plugin.description]
+                                if not hasattr(plugin, "pre"):
+                                    plugin.pre = 0
+                                if not hasattr(plugin, "post"):
+                                    plugin.post = 0
                                 self.FeaturePlugins.append(plugin)
                                 if plugin.storeAsFeatureFile == False:                                        
                                     for idx in range(len(plugin.feature)):
@@ -150,7 +154,27 @@ class FeatureService():
                 if len(temp):
                     previousFeatures[feature['name'].lower()] = temp
             return previousFeatures
-
+        def getAllFeatureData(Features, files, datachunkid, pre, post):
+            previousFeatures = getPreviousFeatures(Features, datachunkid)
+            featureFileData, featureFiles = self.loadFeatureFileData(files)
+            query = f"SELECT * FROM EMA_datachunk WHERE id = '{datachunkid}'"
+            datachunk = self.db.execute_query(query, [])[0]
+            prePost = {"pre": [], "post": []}
+            for key in prePost.keys():
+                query = f"SELECT id, subject, start FROM EMA_datachunk WHERE study_id = '{datachunk['study_id']}' AND Subject = '{datachunk['subject']}' AND start {'<' if key == 'pre' else '>'} '{datachunk['start']}' ORDER BY start {'DESC' if key == 'pre' else ''} LIMIT {eval(key)}"
+                tempdatachunks = self.db.execute_query(query, [])
+                lastStart = datachunk["start"]
+                for tempdatachunk in tempdatachunks:
+                    if round(abs((lastStart - tempdatachunk["start"]).total_seconds() / 60.0)) == 1:
+                        lastStart = tempdatachunk["start"]
+                        previousFeaturesTmp = getPreviousFeatures(Features, tempdatachunk['id'])
+                        query = f"SELECT * FROM EMA_file WHERE DataChunk_ID = '{tempdatachunk['id']}'"
+                        files = []
+                        for row in self.db.execute_query(query, []):
+                            files.append(os.path.join(self.config["MAIN"]["Storage"], tempdatachunk["subject"], row["filename"]))
+                        featureFileDataTmp, featureFilesTmp = self.loadFeatureFileData(files)
+                        prePost[key].append({**previousFeaturesTmp, **featureFileDataTmp})
+            return {**previousFeatures, **featureFileData, **prePost}, featureFiles
         limit = 500
         query = "SELECT * FROM EMA_feature"
         Features = self.db.execute_query(query, {})
@@ -250,10 +274,9 @@ class FeatureService():
                                 if "start" in item:
                                     lastRow = item["subject"] + str(item["start"]) + item["datachunkid"]
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
-                                    previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
+                                    featuresData, featureFiles = getAllFeatureData(Features, files, lastItem["datachunkid"], currentPlugin.pre, currentPlugin.post)
                                     try:
-                                        featureFileData, featureFiles = self.loadFeatureFileData(files)
-                                        values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
+                                        values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), featuresData)
                                         if values:
                                             if not type(values) is tuple:
                                                 values = tuple([values])
@@ -310,11 +333,10 @@ class FeatureService():
                                 if "start" in item: 
                                     lastRow = item["subject"] + str(item["start"]) + item["datachunkid"]
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
-                                    previousFeatures = getPreviousFeatures(Features, lastItem["datachunkid"])
+                                    featuresData, featureFiles = getAllFeatureData(Features, files, lastItem["datachunkid"], currentPlugin.pre, currentPlugin.post)
                                     try:
-                                        featureFileData, featureFiles = self.loadFeatureFileData(files)
                                         if len(featureFiles):
-                                            values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), {**previousFeatures, **featureFileData})
+                                            values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), featuresData)
                                             if values:
                                                 if not type(values) is tuple:
                                                     values = tuple([values])
@@ -371,7 +393,7 @@ class FeatureService():
 if __name__ == "__main__":
     featureService = FeatureService()
     #featureService.removeFeature("Coherence")
-    #featureService.removeFeature("testFeature")
+    featureService.removeFeature("testFeature")
     #featureService.removeFeature("testFeature1")
     #featureService.removeFeature("testFeature2")
-    featureService.run()
+    #featureService.run()
