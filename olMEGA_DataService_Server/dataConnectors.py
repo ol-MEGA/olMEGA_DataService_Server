@@ -51,12 +51,12 @@ class databaseConnector(object):
         self.timeout = int(config["DATABASE"]["Timeout"])
         
     def getDatabasePath(self):
-        if os.path.isfile("../IhaWebServices/db.sqlite3"): 
-            return "../IhaWebServices/db.sqlite3"
-        elif os.path.isfile("db.sqlite3"): 
+        if os.path.isfile("db.sqlite3"): 
             return "db.sqlite3"
         elif os.path.isfile("../db.sqlite3"): 
             return "../db.sqlite3"
+        elif os.path.isfile("../IhaWebServices/db.sqlite3"): 
+            return "../IhaWebServices/db.sqlite3"
         else:
             return ""
         

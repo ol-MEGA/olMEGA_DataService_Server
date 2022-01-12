@@ -103,7 +103,7 @@ class olMEGA_DataService_Server(object):
             print ("  * WARNING: you are using developer SSH-Keys! Please generate a new Cert- and Key-File! *")
             print ("  *                                                                                      *")
             print ("  ****************************************************************************************")
-        self.app.run(self.host, self.port, ssl_context=(self.cert, self.key), use_reloader=False)
+        self.app.run(self.host, self.port, ssl_context=(self.cert, self.key), use_reloader=False, threaded=True)
 
     def add_all_endpoints(self):
         self.add_endpoint("/", "/", self.index)
