@@ -7,6 +7,8 @@ class Example:
     description = 'Demo Feature for testing...'
     isActive = False
     storeAsFeatureFile = True # False: single Value stored in Database, True: Matrix stored in FeatureFile
+    pre = 5
+    post = 10
     
     def __init__(self):
         self.timedelta = 2 # in seconds (max: 60)
