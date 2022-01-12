@@ -393,7 +393,7 @@ class FeatureService():
 if __name__ == "__main__":
     featureService = FeatureService()
     #featureService.removeFeature("Coherence")
-    featureService.removeFeature("testFeature")
+    #featureService.removeFeature("testFeature")
     #featureService.removeFeature("testFeature1")
     #featureService.removeFeature("testFeature2")
-    #featureService.run()
+    featureService.run()

@@ -5,7 +5,6 @@ Feature PLugIn (FPI) to compute the percentage of OVD blocks (125ms) in one chun
 # (c) Joerg Bitzer @ Jade HS, BSD 3-clause license is the valid license for this source code
 # version 0.1.0 first try
 
-
 import datetime
 import numpy as np
 import FeaturePlugins.acousticweighting as aw
