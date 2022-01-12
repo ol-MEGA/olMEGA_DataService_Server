@@ -64,6 +64,8 @@ class dBTable(object):
         myConditions = []
         myValues = {}
         fieldType = self.allFields[[item[0] for item in self.allFields].index(field.lower())][1]
+        if value is None:
+            value = ''
         if value.find("||") >= 0:
             tmp = []
             tmpValues = {}
