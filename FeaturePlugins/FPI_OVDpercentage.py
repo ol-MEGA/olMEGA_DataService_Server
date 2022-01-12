@@ -1,9 +1,12 @@
 """
-Feature PLugIn (FPI) to compute the percentage of OVD blocks (125ms) in one chunk of one minute
+Feature PLugIn (FPI) to compute the percentage (defined between 0 and 1) of OVD blocks (125ms) in one chunk of one minute
 """
 
 # (c) Joerg Bitzer @ Jade HS, BSD 3-clause license is the valid license for this source code
-# version 0.1.0 first try
+# 
+# version 0.1.0 first try 11.01.2021
+# version 1.0.0 tested 12.01.2021 JB
+# version 1.0.1 debugged and major bug fixed
 
 import datetime
 import numpy as np
@@ -13,7 +16,7 @@ import matplotlib.pyplot as plt
 
 class OVDpercentage:
     feature = ['OVDpercentage']
-    description = ['The percentage of blocks (125ms) with OVD in 60s data']
+    description = ['The percentage (0...1) of blocks (125ms) with OVD in 60s data']
     isActive = True
     storeAsFeatureFile = False # False: single Value stored in Database, True: Matrix stored in FeatureFile
     
@@ -30,20 +33,15 @@ class OVDpercentage:
         return returnData
     
     def process(self, startTime, endTime, existingFeatures):
-        if self.storeAsFeatureFile == False:
+        if "OVD" in existingFeatures.keys():
             ## Example for Value in Database
             OVDdata = existingFeatures['OVD']
             
-            # just debug
-            print(np.mean(OVDdata))
-            print(len(OVDdata[OVDdata == 1])/len(OVDdata))
-            #plt.show()
-            
-            
             result = []
+            sliceStart = startTime
+            sliceEnd = sliceStart + datetime.timedelta(seconds= min(60, self.timedelta))
             
-            
-            while sliceStart < endTime:
-                result.append(len(OVDdata[OVDdata == 1])/len(OVDdata))
+            result.append({"start": sliceStart, "end": sliceEnd, "side": "B", "value": np.mean(OVDdata), "isvalid": 1})
+  
             return result
 
