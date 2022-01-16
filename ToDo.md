@@ -1,12 +1,24 @@
 # todo list for data analysis of IHAB data
 
+1:
+Prozentanteil OVD für jeden Survey über eine Zeitspanne von 5 Minuten und RMS/dB(A)
+a) unter Einbeziehung aller Daten
+b) bei Ausschluss der OVD-Segmente
+c) nur für OVD-Segmente
+unter Berücksichtigung der zeitlichen Verortung der bewerteten Situation.
+
+2:
+Perzentilverteilung des RMS/dB(A) mit Auflösung 1 dB für jeden Survey über eine Zeitspanne von 5 Minuten
+a) unter Einbeziehung aller Daten
+b) bei Ausschluss der OVD-Segmente
+c) für OVD-Segmente
+unter Berücksichtigung der zeitlichen Verortung der bewerteten Situation. 
+
 ## OVD 
 1) Feature Extraktor OVD based an Jules ideas (Python ML (scikit-learn) or transplant)
 
 
 ## Feature Analyzer
-
-### OVD based on the ovd files
 
 ### Band energy as a new feature file 
 
@@ -81,3 +93,9 @@ a-weighting as a new databank entry is solved
 ### band energy
 FFT to band is solved
 time base 60s mean is implemented
+
+
+### OVD based on the ovd files
+Done for OVD percentage
+
+
