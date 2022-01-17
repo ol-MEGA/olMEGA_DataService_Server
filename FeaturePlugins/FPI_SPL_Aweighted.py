@@ -8,11 +8,11 @@ the standard deviation of the dB values für each 125ms block.
 # version 0.9.5 changed interface to multi feature
 # version 1.0.0 rc-1 0.0 replaced by means of data
 # version 1.0.0 tested and worked
-
+# version 1.0.0 adding olMEGA_DataService_Tools
 
 import datetime
 import numpy as np
-import FeaturePlugins.acousticweighting as aw
+import olMEGA_DataService_Tools.acousticweighting as aw
 
 import matplotlib.pyplot as plt
 

@@ -397,14 +397,16 @@ class dataConnector(object):
                 for count in range(len(DataChunks[0]["questionnaire"])):
                     if DataChunks[0]["questionnaire"][count]["filename"] == newQuestinare["filename"]:       
                         existingAnswers = DataChunks[0]["questionnaire"][count]["answer"]
-                        for count in reversed(range(len(newQuestinare["answer"]))):
-                            currAnswer = newQuestinare["answer"][count]
+                        for countAnswer in reversed(range(len(newQuestinare["answer"]))):
                             for countExistingAnswers in reversed(range(len(existingAnswers))):
-                                if currAnswer["questionkey"] == existingAnswers[countExistingAnswers]["questionkey"] and currAnswer["answerkey"] == existingAnswers[countExistingAnswers]["answerkey"]:
-                                    del newQuestinare["answer"][count]
-                                    del existingAnswers[countExistingAnswers]
-                        for count in reversed(range(len(newQuestinare["answer"]))):
-                            currAnswer = newQuestinare["answer"][count]
+                                if newQuestinare["answer"][countAnswer]["questionkey"] == existingAnswers[countExistingAnswers]["questionkey"] and newQuestinare["answer"][countAnswer]["answerkey"] == existingAnswers[countExistingAnswers]["answerkey"]:
+                                    try:
+                                        del newQuestinare["answer"][countAnswer]
+                                        del existingAnswers[countExistingAnswers]
+                                    except:
+                                        print("TEST")
+                        for countAnswer in reversed(range(len(newQuestinare["answer"]))):
+                            currAnswer = newQuestinare["answer"][countAnswer]
                             blnFirstRow = True
                             for countExistingAnswers in reversed(range(len(existingAnswers))):
                                 if currAnswer["questionkey"] == existingAnswers[countExistingAnswers]["questionkey"] and currAnswer["answerkey"] != existingAnswers[countExistingAnswers]["answerkey"]:
@@ -414,7 +416,7 @@ class dataConnector(object):
                                         blnFirstRow = False
                                     else:
                                         AnswersToDelete.append(existingAnswers[countExistingAnswers])                                
-                                    del newQuestinare["answer"][count]
+                                    del newQuestinare["answer"][countAnswer]
                                     del existingAnswers[countExistingAnswers]
                         for currAnswer in newQuestinare["answer"]:
                             AnswersToImport.append(currAnswer)

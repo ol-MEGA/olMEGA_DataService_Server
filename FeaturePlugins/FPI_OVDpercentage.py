@@ -7,10 +7,11 @@ Feature PLugIn (FPI) to compute the percentage (defined between 0 and 1) of OVD 
 # version 0.1.0 first try 11.01.2021
 # version 1.0.0 tested 12.01.2021 JB
 # version 1.0.1 debugged and major bug fixed
+# version 1.0.0 adding olMEGA_DataService_Tools
 
 import datetime
 import numpy as np
-import FeaturePlugins.acousticweighting as aw
+import olMEGA_DataService_Tools.acousticweighting as aw
 
 import matplotlib.pyplot as plt
 

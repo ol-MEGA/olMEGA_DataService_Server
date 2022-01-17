@@ -4,7 +4,7 @@ import main
 import numpy
 import inspect
 import datetime
-from olMEGA_DataService_Server import FeatureFile
+from olMEGA_DataService_Tools import FeatureFile
 from olMEGA_DataService_Server.dataConnectors import databaseConnector
 import glob
 import time
@@ -392,7 +392,7 @@ class FeatureService():
 
 if __name__ == "__main__":
     featureService = FeatureService()
-    #featureService.removeFeature("Coherence")
+    #featureService.removeFeature("OVDpercentage")
     #featureService.removeFeature("testFeature")
     #featureService.removeFeature("testFeature1")
     #featureService.removeFeature("testFeature2")
