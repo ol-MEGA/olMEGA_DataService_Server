@@ -395,7 +395,7 @@ class olMEGA_DataService_Server(object):
                             inputData["COMMAND"] += ";"
                         inputData["COMMAND"] = inputData["COMMAND"][:inputData["COMMAND"].index(";")]
                         myDataConnector = dataConnector(self.dataTables, self.forbiddenTables, session["UserRights"])
-                        returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}))
+                        returnData = json.dumps(myDataConnector.database.execute_query(inputData["COMMAND"], {}), default=str)
                         myDataConnector.close()                
             return str(returnData)
         except Exception as e:
