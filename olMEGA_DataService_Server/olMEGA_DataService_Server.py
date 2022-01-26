@@ -272,7 +272,6 @@ class olMEGA_DataService_Server(object):
     @auth.login_required
     def exportFiles(self):
         myDataConnector = None
-        tempFile = None
         try:
             if request.is_json:
                 inputData = request.get_json()
@@ -289,30 +288,28 @@ class olMEGA_DataService_Server(object):
                     if "downloadFileList" in session.keys() and len(session["downloadFileList"]) > 0:
                         count = 0
                         datasize = 0
-                        tempFile = tempfile.NamedTemporaryFile(mode='w', delete=False)
-                        zipf = zipfile.ZipFile(tempFile.name, 'w', zipfile.ZIP_DEFLATED)
-                        for idx in reversed(range(len(session["downloadFileList"]))):
-                            datasize += os.path.getsize(session["downloadFileList"][idx])
-                            with open(session["downloadFileList"][idx], mode='rb') as file:
-                                compressed_data = file.read()
-                            zipf.writestr(session["downloadFileList"][idx], zlib.decompress(compressed_data))
-                            #zipf.write(session["downloadFileList"][idx])
-                            del session["downloadFileList"][idx]
-                            count += 1
-                            if datasize >= 500000000 or count >= 1000:
-                                break
-                        zipf.close()
-                        if len(session["downloadFileList"]) == 0:
-                            del session["downloadFileList"]
-                        return send_file(tempFile.name, mimetype = 'zip', attachment_filename= 'tmp.zip', as_attachment = True)
+                        with tempfile.NamedTemporaryFile(mode='w') as tempFile:
+                            zipf = zipfile.ZipFile(tempFile.name, 'w', zipfile.ZIP_DEFLATED)
+                            for idx in reversed(range(len(session["downloadFileList"]))):
+                                datasize += os.path.getsize(session["downloadFileList"][idx])
+                                with open(session["downloadFileList"][idx], mode='rb') as file:
+                                    compressed_data = file.read()
+                                zipf.writestr(session["downloadFileList"][idx], zlib.decompress(compressed_data))
+                                #zipf.write(session["downloadFileList"][idx])
+                                del session["downloadFileList"][idx]
+                                count += 1
+                                if datasize >= 500000000 or count >= 1000:
+                                    break
+                            zipf.close()
+                            if len(session["downloadFileList"]) == 0:
+                                del session["downloadFileList"]
+                            return send_file(tempFile.name, mimetype = 'zip', attachment_filename= 'tmp.zip', as_attachment = True)
             return Response(str(False), status = 204, headers = {})
         except Exception as e:
             if self.app.debug:
                 traceback.print_exc()
             return Response(str(e) + "\n\tEMA-Server encountered this error!", status = 500, headers = {})
         finally:
-            if tempFile != None:
-                tempFile.close()
             os.chdir(self.workingDirectory)
             if myDataConnector != None:
                 myDataConnector.close()
