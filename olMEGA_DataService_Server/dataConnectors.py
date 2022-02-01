@@ -301,7 +301,7 @@ class dataConnector(object):
                     updatedFile["lastupdate"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     updatedFile["id"] = myFiles[0]["hash"]
                     for idx in range(1, len(myFiles)):
-                        self.database.execute_query("DELETE FROM EMA_File WHERE ID = %(fileId)s", {"fileId" : myFiles[idx]["id"]})
+                        self.database.execute_query("DELETE FROM EMA_file WHERE ID = %(fileId)s", {"fileId" : myFiles[idx]["id"]})
                     self.updateDataSet({"file" : [updatedFile]}, {"file": [myFiles[0]]}, True)
                 file = open(os.path.join(self.FeatureFilesFolder, data["subject"], data["filename"]), "wb")
                 file.write(compressed_data)
