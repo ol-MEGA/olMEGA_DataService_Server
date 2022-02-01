@@ -326,7 +326,13 @@ class olMEGA_DataService_Server(object):
                 data = json.loads(request.form["data"])
                 for id in data:
                     try:
-                        returnData = returnData and myDataConnector.importQuestinares(data[id], request.files[id].read().decode("utf-8"))
+                        fileData = False
+                        try:
+                            fileData = request.files[id].read().decode("utf-8")
+                        except:
+                            fileData = False
+                        if fileData:
+                            returnData = returnData and myDataConnector.importQuestinares(data[id], fileData)
                     except:
                         if self.app.debug:
                             traceback.print_exc()

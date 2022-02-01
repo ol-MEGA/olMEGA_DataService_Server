@@ -399,12 +399,9 @@ class dataConnector(object):
                         existingAnswers = DataChunks[0]["questionnaire"][count]["answer"]
                         for countAnswer in reversed(range(len(newQuestinare["answer"]))):
                             for countExistingAnswers in reversed(range(len(existingAnswers))):
-                                if newQuestinare["answer"][countAnswer]["questionkey"] == existingAnswers[countExistingAnswers]["questionkey"] and newQuestinare["answer"][countAnswer]["answerkey"] == existingAnswers[countExistingAnswers]["answerkey"]:
-                                    try:
-                                        del newQuestinare["answer"][countAnswer]
-                                        del existingAnswers[countExistingAnswers]
-                                    except:
-                                        print("TEST")
+                                if len(newQuestinare["answer"]) - 1 >= countAnswer and newQuestinare["answer"][countAnswer]["questionkey"] == existingAnswers[countExistingAnswers]["questionkey"] and newQuestinare["answer"][countAnswer]["answerkey"] == existingAnswers[countExistingAnswers]["answerkey"]:
+                                    del newQuestinare["answer"][countAnswer]
+                                    del existingAnswers[countExistingAnswers]
                         for countAnswer in reversed(range(len(newQuestinare["answer"]))):
                             currAnswer = newQuestinare["answer"][countAnswer]
                             blnFirstRow = True
