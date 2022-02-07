@@ -271,8 +271,8 @@ class dataConnector(object):
             if not os.path.isdir(os.path.join(self.FeatureFilesFolder, data["subject"])):
                 os.makedirs(os.path.join(self.FeatureFilesFolder, data["subject"]))
             if data["overwrite"] == True or not os.path.isfile(os.path.join(self.FeatureFilesFolder, data["subject"], data["filename"])):
-                startDate = datetime.datetime.strptime(fileNameComponents[-2] + fileNameComponents[-1], '%Y%m%d%H%M%S%f').strftime("%Y-%m-%d %H:%M:%S")
-                endDate = (datetime.datetime.strptime(fileNameComponents[-2] + fileNameComponents[-1], '%Y%m%d%H%M%S%f') + datetime.timedelta(seconds=60)).strftime("%Y-%m-%d %H:%M:%S")
+                startDate = (datetime.datetime.strptime(fileNameComponents[-2] + fileNameComponents[-1], '%Y%m%d%H%M%S%f') + datetime.timedelta(seconds=-30)).strftime("%Y-%m-%d %H:%M:%S")
+                endDate =   (datetime.datetime.strptime(fileNameComponents[-2] + fileNameComponents[-1], '%Y%m%d%H%M%S%f') + datetime.timedelta(seconds=30)).strftime("%Y-%m-%d %H:%M:%S")
                 myFiles = self.getDataSet("file", {"subject": data["subject"], "start": startDate, "filename" : data["filename"]}, True)
                 if len(myFiles) == 0:
                     newFile = {}
