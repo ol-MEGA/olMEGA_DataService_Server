@@ -146,6 +146,7 @@ class FeatureService():
         def getPreviousFeatures(Features, datachunkId):
             previousFeatures = {}
             for feature in Features:
+                self.db.resetTimer()
                 query = 'SELECT EMA_featurevalue.Start as start, EMA_featurevalue.End as end, EMA_featurevalue.Side as Side, EMA_featurevalue.Value as value, EMA_featurevalue.isValid as isValid FROM EMA_featurevalue \
                     join EMA_feature on EMA_featurevalue.Feature_id = EMA_feature.ID \
                     WHERE EMA_feature.name = %(name)s AND EMA_featurevalue.DataChunk_id = %(DataChunk_id)s \
@@ -161,6 +162,7 @@ class FeatureService():
             datachunk = self.db.execute_query(query, [])[0]
             prePost = {"pre": [], "post": []}
             for key in prePost.keys():
+                self.db.resetTimer()
                 query = f"SELECT id, subject, start FROM EMA_datachunk WHERE study_id = '{datachunk['study_id']}' AND Subject = '{datachunk['subject']}' AND start {'<' if key == 'pre' else '>'} '{datachunk['start']}' ORDER BY start {'DESC' if key == 'pre' else ''} LIMIT {eval(key)}"
                 tempdatachunks = self.db.execute_query(query, [])
                 lastStart = datachunk["start"]
