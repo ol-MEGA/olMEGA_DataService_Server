@@ -278,19 +278,20 @@ class FeatureService():
                                 if item["datachunkid"] != lastItem["datachunkid"] and len(files) > 0:
                                     featuresData, featureFiles = getAllFeatureData(Features, files, lastItem["datachunkid"], currentPlugin.pre, currentPlugin.post)
                                     try:
-                                        values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), featuresData)
-                                        if values:
-                                            if not type(values) is tuple:
-                                                values = tuple([values])
-                                            if len(currentPlugin.feature) == len(values):
-                                                for idx in range(len(currentPlugin.feature)):
-                                                    currentFeatureId = [element for element in Features if element['name'] == plugin.feature[idx].lower()][0]["id"]
-                                                    for value in values[idx]:
-                                                        if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
-                                                            queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-                                            elif not hasattr(currentPlugin, "warning_number_of_features_not_correct"):
-                                                currentPlugin.warning_number_of_features_not_correct = True
-                                                print("\33[31mWarning: Number of Features not equal return values in ", type(currentPlugin), "\33[0m")
+                                        if "fs" in featuresData.keys():
+                                            values = currentPlugin.process(datetime.datetime.strptime(str(lastItem["start"]), '%Y-%m-%d %H:%M:%S'), datetime.datetime.strptime(str(lastItem["end"]), '%Y-%m-%d %H:%M:%S'), featuresData)
+                                            if values:
+                                                if not type(values) is tuple:
+                                                    values = tuple([values])
+                                                if len(currentPlugin.feature) == len(values):
+                                                    for idx in range(len(currentPlugin.feature)):
+                                                        currentFeatureId = [element for element in Features if element['name'] == plugin.feature[idx].lower()][0]["id"]
+                                                        for value in values[idx]:
+                                                            if type(value) is dict and "start" in value and "end" in value and "value" in value and "side" in value and "isvalid" in value:
+                                                                queryValueList.append('("%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s", "%s")' % (str(uuid.uuid4()), lastItem["datachunkid"], currentFeatureId, value["start"], value["end"], value["side"], value["value"], value["isvalid"], datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                                                elif not hasattr(currentPlugin, "warning_number_of_features_not_correct"):
+                                                    currentPlugin.warning_number_of_features_not_correct = True
+                                                    print("\33[31mWarning: Number of Features not equal return values in ", type(currentPlugin), "\33[0m")
                                     except Exception as e:
                                         if hasattr(e, 'message'):
                                             print(e.message)
